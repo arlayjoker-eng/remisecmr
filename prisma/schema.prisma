@@ -1,0 +1,71 @@
+// RemiseCMR — kiosque iPad · Collège Mont-Royal
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Operator {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String     @default("")
+  fullName     String
+  role         String // "laptop" | "casier" | "admin"
+  createdAt    DateTime   @default(now())
+  deliveries   Delivery[]
+}
+
+model Student {
+  id           String    @id // "ELV-24-0142" (from CSV)
+  code         String    @unique // barcode value, e.g. "A24P0142X"
+  firstName    String
+  lastName     String
+  groupName    String // "CM1 A — Primaire"
+  box          String // storage box id, e.g. "CS-014"
+  device       String // "AsusBook 15 OLED — i5 / 16 Go / 512 Go"
+  serial       String    @unique
+  accessories  String // JSON array stored as string
+  tutorName    String
+  tutorPhone   String
+  paid         Boolean   @default(true)
+  laptopStatus String    @default("pending") // "pending" | "delivered"
+  avatarHue    Int // 0-360, deterministic from name
+  createdAt    DateTime  @default(now())
+  delivery     Delivery?
+  ownedLocker  Locker?   @relation("LockerOwner")
+  binomeFor    Locker?   @relation("LockerBinome")
+}
+
+model Locker {
+  id          String    @id @default(cuid())
+  number      String    @unique // "L-A-014"
+  ownerId     String    @unique
+  owner       Student   @relation("LockerOwner", fields: [ownerId], references: [id])
+  binomeId    String?   @unique
+  binome      Student?  @relation("LockerBinome", fields: [binomeId], references: [id])
+  brand       String // "Master Lock 1500iD"
+  code        String // "12-34-08"
+  aisle       String // "Aile A · Rangée 2"
+  status      String    @default("pending") // "pending" | "delivered"
+  deliveredBy String? // operatorId
+  deliveredAt DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+model Delivery {
+  id             String   @id @default(cuid())
+  folio          String   @unique // "AE-26-0142"
+  studentId      String   @unique
+  student        Student  @relation(fields: [studentId], references: [id])
+  operatorId     String
+  operator       Operator @relation(fields: [operatorId], references: [id])
+  tutorNameTyped String
+  tutorIdLast4   String
+  signaturePng   Bytes
+  pdfPath        String
+  pdfSha256      String
+  deliveredAt    DateTime @default(now())
+}
