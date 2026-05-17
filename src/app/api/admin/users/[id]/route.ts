@@ -49,7 +49,8 @@ export async function PATCH(
         { status: 400 },
       );
     }
-    const bcrypt = (await import("bcryptjs")).default;
+    const bcryptMod: any = await import("bcryptjs");
+    const bcrypt = bcryptMod.default ?? bcryptMod;
     data.passwordHash = await bcrypt.hash(body.password, 10);
   }
 

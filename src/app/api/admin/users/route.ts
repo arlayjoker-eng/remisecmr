@@ -70,7 +70,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const bcrypt = (await import("bcryptjs")).default;
+  const bcryptMod: any = await import("bcryptjs");
+  const bcrypt = bcryptMod.default ?? bcryptMod;
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
     data: { email, fullName, passwordHash, role: role as never, active },
