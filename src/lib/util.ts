@@ -8,8 +8,8 @@ export function hueFromName(first: string, last: string): number {
   return h;
 }
 
-export function folioFor(studentId: string): string {
-  return `AE-26-${studentId.slice(-4)}`;
+export function folioFor(studentNumber: string): string {
+  return `AE-26-${studentNumber}`;
 }
 
 export function initialsOf(name: string | null | undefined): string {

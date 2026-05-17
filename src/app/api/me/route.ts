@@ -7,8 +7,9 @@ export async function GET() {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   return NextResponse.json({
+    id: session.user.id,
     name: session.user.name,
+    email: session.user.email,
     role: session.user.role,
-    operatorId: session.user.operatorId,
   });
 }

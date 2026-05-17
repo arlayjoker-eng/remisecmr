@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { toClientStudent } from "@/lib/mappers";
 import { NextResponse } from "next/server";
 
-// Lookup by barcode value (`code`) or matricule (`id`).
+// Lookup an élève by studentNumber (= code-barres) or by id.
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ code: string }> },
@@ -18,8 +18,7 @@ export async function GET(
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
   const student = await prisma.student.findFirst({
-    where: { OR: [{ code: q }, { id: q }] },
-    include: { delivery: true },
+    where: { OR: [{ studentNumber: q }, { id: q }] },
   });
   if (!student) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });

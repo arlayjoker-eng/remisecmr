@@ -1,22 +1,11 @@
 "use client";
-// Receipt / success screen — confirmation + PDF preview.
-// Port of `screen-receipt-kido.jsx` (translated to French for consistency).
+// Reçu / écran de succès — flux PORTABLE.
 import React from "react";
 import { useRouter } from "next/navigation";
 import { K, Btn, Icons } from "@/components/ui";
+import type { ClientStudent } from "@/lib/mappers";
 
 const C = K;
-
-type Student = {
-  id: string;
-  first: string;
-  last: string;
-  group: string;
-  box: string;
-  device: string;
-  serial: string;
-  accessories: string[];
-};
 
 type Signature = {
   tutorName: string;
@@ -29,19 +18,18 @@ export default function ReceiptScreen({
   signature,
   operatorName,
 }: {
-  student: Student;
+  student: ClientStudent;
   signature: Signature;
   operatorName: string;
 }) {
   const router = useRouter();
-  const folio = `AE-26-${student.id.slice(-4)}`;
-  const goScan = () => router.push("/scan");
+  const folio = `AE-26-${student.studentNumber}`;
+  const goScan = () => router.push("/scan?mode=laptop");
   const openPdf = () =>
     window.open(`/api/deliveries/${folio}/pdf`, "_blank", "noopener");
 
   return (
     <div style={{ display: "flex", height: "100%", background: C.bg }}>
-      {/* Left: success */}
       <div
         style={{
           width: 520,
@@ -88,10 +76,11 @@ export default function ReceiptScreen({
               letterSpacing: -1.2,
               lineHeight: 1.05,
               marginTop: 4,
+              fontFamily: K.display,
             }}
           >
-            {student.first} {student.last}
-            <br />a reçu son équipement
+            {student.firstName} {student.lastName}
+            <br />a reçu son portable
           </div>
         </div>
 
@@ -103,23 +92,13 @@ export default function ReceiptScreen({
             padding: "4px 18px",
           }}
         >
-          <Check
-            label="Signature capturée"
-            detail={`Par ${signature.tutorName}`}
-          />
-          <Check
-            label="Document PDF généré"
-            detail={`Référence ${folio}`}
-          />
+          <Check label="Signature capturée" detail={`Par ${signature.tutorName}`} />
+          <Check label="Document PDF généré" detail={`Référence ${folio}`} />
           <Check
             label="Empreinte SHA-256 appliquée"
             detail="intégrité du document"
           />
-          <Check
-            label="Archivé sur le serveur"
-            detail="RemiseCMR · VPS"
-            last
-          />
+          <Check label="Archivé sur le serveur" detail="RemiseCMR · VPS" last />
         </div>
 
         <div style={{ flex: 1 }} />
@@ -138,15 +117,14 @@ export default function ReceiptScreen({
             kind="ghost"
             size="md"
             full
-            icon={Icons.list({ size: 20 })}
-            onClick={goScan}
+            icon={Icons.download({ size: 20 })}
+            onClick={openPdf}
           >
-            Retour à l&apos;accueil
+            Voir le PDF
           </Btn>
         </div>
       </div>
 
-      {/* Right: document */}
       <div
         style={{
           flex: 1,
@@ -181,22 +159,20 @@ export default function ReceiptScreen({
                 fontSize: 22,
                 fontWeight: 800,
                 color: "#fff",
-                letterSpacing: -0.5,
+                fontFamily: K.display,
               }}
             >
               Référence {folio}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Btn
-              kind="light"
-              size="sm"
-              icon={Icons.download({ size: 18 })}
-              onClick={openPdf}
-            >
-              PDF
-            </Btn>
-          </div>
+          <Btn
+            kind="light"
+            size="sm"
+            icon={Icons.download({ size: 18 })}
+            onClick={openPdf}
+          >
+            PDF
+          </Btn>
         </div>
 
         <div
@@ -205,17 +181,13 @@ export default function ReceiptScreen({
             background: "#fff",
             borderRadius: 14,
             border: `1px solid ${C.line}`,
-            boxShadow:
-              "0 1px 0 rgba(20,24,35,0.02), 0 18px 50px rgba(20,24,35,0.06)",
+            boxShadow: "0 18px 50px rgba(20,24,35,0.06)",
             padding: "32px 40px",
-            overflow: "hidden",
-            position: "relative",
             display: "flex",
             flexDirection: "column",
             gap: 16,
             fontSize: 12,
             color: C.ink2,
-            lineHeight: 1.55,
           }}
         >
           <div
@@ -233,37 +205,26 @@ export default function ReceiptScreen({
                   borderRadius: 10,
                   background: "#fff",
                   padding: 3,
+                  border: `1px solid ${C.line}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  border: `1px solid ${C.line}`,
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/cmr-logo.png"
                   alt="CMR"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 />
               </div>
               <div>
                 <div
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 800,
-                    color: C.ink,
-                    letterSpacing: -0.2,
-                  }}
+                  style={{ fontSize: 14, fontWeight: 800, color: C.ink }}
                 >
                   Collège Mont-Royal
                 </div>
-                <div
-                  style={{ fontSize: 11, color: C.ink3, fontWeight: 600 }}
-                >
+                <div style={{ fontSize: 11, color: C.ink3, fontWeight: 600 }}>
                   Campus principal · Année scolaire 2025–2026
                 </div>
               </div>
@@ -288,22 +249,20 @@ export default function ReceiptScreen({
               fontSize: 20,
               fontWeight: 800,
               color: C.ink,
-              letterSpacing: -0.4,
-              lineHeight: 1.1,
+              fontFamily: K.display,
             }}
           >
             Accusé de réception — Programme 1:1
           </div>
 
-          <p style={{ margin: 0, fontSize: 13 }}>
-            Par la présente, <strong>{signature.tutorName}</strong>, en qualité
-            de parent responsable de l&apos;élève{" "}
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>
+            Par la présente, <strong>{signature.tutorName}</strong>, parent
+            responsable de l&apos;élève{" "}
             <strong>
-              {student.first} {student.last}
+              {student.firstName} {student.lastName}
             </strong>
-            , reçoit en bonne et due forme l&apos;équipement et les accessoires
-            décrits ci-dessous. Le signataire reconnaît les avoir vérifiés
-            physiquement et s&apos;engage à un usage responsable.
+            , reçoit en bonne et due forme le portable décrit ci-dessous et
+            s&apos;engage à un usage responsable.
           </p>
 
           <div
@@ -318,17 +277,17 @@ export default function ReceiptScreen({
           >
             <DocField
               label="Élève"
-              value={`${student.first} ${student.last}`}
+              value={`${student.firstName} ${student.lastName}`}
             />
-            <DocField label="Matricule" value={student.id} mono />
-            <DocField label="Classe / Niveau" value={student.group} />
-            <DocField label="Casier physique" value={student.box} mono />
-            <DocField label="Équipement" value={student.device} />
-            <DocField label="Numéro de série" value={student.serial} mono />
+            <DocField label="Numéro d'élève" value={student.studentNumber} mono />
+            <DocField label="Groupe" value={student.group} />
+            <DocField label="Niveau" value={`Secondaire ${student.level}`} />
+            <DocField label="Boîte N°" value={student.boxNumber || "—"} mono />
+            <DocField label="Modèle" value={student.laptopModel || "—"} />
             <DocField
-              label="Accessoires"
-              value={student.accessories.join(", ")}
-              span
+              label="Numéro de série"
+              value={student.laptopSerial || "—"}
+              mono
             />
           </div>
 
@@ -369,7 +328,6 @@ export default function ReceiptScreen({
             <div>
               Document horodaté et archivé · empreinte SHA-256 · RemiseCMR
             </div>
-            <MiniQR />
           </div>
         </div>
       </div>
@@ -412,14 +370,7 @@ function Check({
         {Icons.check({ size: 16, stroke: "#fff", strokeWidth: 2.5 })}
       </div>
       <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            color: C.ink,
-            letterSpacing: -0.2,
-          }}
-        >
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>
           {label}
         </div>
         <div
@@ -441,15 +392,13 @@ function DocField({
   label,
   value,
   mono,
-  span,
 }: {
   label: string;
   value: string;
   mono?: boolean;
-  span?: boolean;
 }) {
   return (
-    <div style={{ gridColumn: span ? "1 / -1" : "auto" }}>
+    <div>
       <div
         style={{
           fontSize: 9,
@@ -493,7 +442,6 @@ function SigBlock({
         style={{
           height: 80,
           borderBottom: `1px solid ${C.ink2}`,
-          position: "relative",
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "center",
@@ -507,7 +455,15 @@ function SigBlock({
             style={{ maxHeight: "100%", maxWidth: "100%" }}
           />
         ) : (
-          <FauxSig />
+          <svg viewBox="0 0 200 60" width="80%" height="100%">
+            <path
+              d="M10 45 Q 25 10, 40 30 T 70 35 Q 85 18, 100 38 T 130 32 Q 150 12, 170 40"
+              stroke={C.ink}
+              fill="none"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+          </svg>
         )}
       </div>
       <div
@@ -522,64 +478,12 @@ function SigBlock({
       >
         {label}
       </div>
-      <div
-        style={{
-          fontSize: 12,
-          fontWeight: 700,
-          color: C.ink,
-          marginTop: 2,
-        }}
-      >
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, marginTop: 2 }}>
         {name}
       </div>
       <div style={{ fontSize: 11, color: C.ink3, fontFamily: C.mono }}>
         {sub}
       </div>
     </div>
-  );
-}
-
-function FauxSig() {
-  return (
-    <svg viewBox="0 0 200 60" width="80%" height="100%">
-      <path
-        d="M10 45 Q 25 10, 40 30 T 70 35 Q 85 18, 100 38 T 130 32 Q 150 12, 170 40"
-        stroke={C.ink}
-        fill="none"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M55 48 Q 75 42, 100 48"
-        stroke={C.ink}
-        fill="none"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function MiniQR() {
-  const seed = [
-    "1111111",
-    "1000001",
-    "1011101",
-    "1011101",
-    "1011101",
-    "1000001",
-    "1111111",
-  ];
-  const cells: React.ReactNode[] = [];
-  for (let r = 0; r < seed.length; r++)
-    for (let c = 0; c < seed[r].length; c++)
-      if (seed[r][c] === "1")
-        cells.push(
-          <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill={C.ink} />,
-        );
-  return (
-    <svg viewBox="0 0 7 7" width="36" height="36">
-      {cells}
-    </svg>
   );
 }

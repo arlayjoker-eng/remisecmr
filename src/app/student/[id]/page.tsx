@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { toClientStudent } from "@/lib/mappers";
+import { toClientStudent, fmtDate } from "@/lib/mappers";
 import { notFound } from "next/navigation";
 import StudentScreen from "@/components/screens/StudentScreen";
 
@@ -11,10 +11,23 @@ export default async function StudentPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const student = await prisma.student.findUnique({
-    where: { id: decodeURIComponent(id) },
-    include: { delivery: true },
+  const key = decodeURIComponent(id);
+  const student = await prisma.student.findFirst({
+    where: { OR: [{ studentNumber: key }, { id: key }] },
+    include: {
+      deliveries: { where: { type: "LAPTOP" }, include: { operator: true } },
+    },
   });
   if (!student) notFound();
-  return <StudentScreen student={toClientStudent(student)} />;
+
+  const d = student.deliveries[0];
+  const delivery = d
+    ? {
+        folio: d.folio || `AE-26-${student.studentNumber}`,
+        deliveredAt: fmtDate(d.deliveredAt),
+        operatorName: d.operator?.fullName || "Opérateur",
+      }
+    : null;
+
+  return <StudentScreen student={toClientStudent(student)} delivery={delivery} />;
 }

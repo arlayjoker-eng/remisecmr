@@ -3,8 +3,8 @@ import { prisma } from "@/lib/db";
 import { toClientStudent } from "@/lib/mappers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import CasierScreen from "@/components/screens/CasierScreen";
 import { K } from "@/lib/k";
+import CasierScreen from "@/components/screens/CasierScreen";
 
 export const dynamic = "force-dynamic";
 
@@ -13,49 +13,43 @@ export default async function CasierPage({
 }: {
   params: Promise<{ studentId: string }>;
 }) {
-  const { studentId: raw } = await params;
-  const studentId = decodeURIComponent(raw);
+  const { studentId } = await params;
+  const key = decodeURIComponent(studentId);
   const session = await auth();
 
-  const student = await prisma.student.findUnique({
-    where: { id: studentId },
+  const student = await prisma.student.findFirst({
+    where: { OR: [{ studentNumber: key }, { id: key }] },
   });
   if (!student) notFound();
 
   const locker = await prisma.locker.findFirst({
-    where: { OR: [{ ownerId: studentId }, { binomeId: studentId }] },
-    include: { owner: true, binome: true },
+    where: {
+      OR: [
+        { assignedStudentNumberA: student.studentNumber },
+        { assignedStudentNumberB: student.studentNumber },
+      ],
+    },
+    include: { studentA: true, studentB: true },
   });
 
-  if (!locker) {
+  if (!locker || !locker.studentA) {
     return <NoLocker name={`${student.firstName} ${student.lastName}`} />;
   }
 
-  const eligible = await prisma.student.findMany({
-    where: {
-      ownedLocker: { is: null },
-      NOT: { id: studentId },
-    },
-    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-  });
+  const viaBinome = locker.assignedStudentNumberB === student.studentNumber;
 
   return (
     <CasierScreen
       student={toClientStudent(student)}
+      owner={toClientStudent(locker.studentA)}
+      binome={locker.studentB ? toClientStudent(locker.studentB) : null}
+      viaBinome={viaBinome}
       locker={{
-        id: locker.id,
-        ownerId: locker.ownerId,
         number: locker.number,
-        code: locker.code,
-        brand: locker.brand,
-        aisle: locker.aisle,
+        combinationCode: locker.combinationCode,
         status: locker.status,
-        binomeId: locker.binomeId,
       }}
-      primaryStudent={toClientStudent(locker.owner)}
-      binomeStudent={locker.binome ? toClientStudent(locker.binome) : null}
       operatorName={session?.user?.name || "Opérateur"}
-      eligibleBinomes={eligible.map((s) => toClientStudent(s))}
     />
   );
 }
@@ -88,7 +82,15 @@ function NoLocker({ name }: { name: string }) {
           justifyContent: "center",
         }}
       >
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.25" strokeLinecap="round">
+        <svg
+          width="36"
+          height="36"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#fff"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+        >
           <path d="M6 6l12 12M18 6 6 18" />
         </svg>
       </div>
@@ -106,7 +108,7 @@ function NoLocker({ name }: { name: string }) {
         et n&apos;est pas binôme d&apos;un autre élève.
       </div>
       <Link
-        href="/scan"
+        href="/scan?mode=casier"
         style={{
           background: "#fff",
           color: K.ink,

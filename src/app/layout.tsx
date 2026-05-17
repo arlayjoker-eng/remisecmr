@@ -2,9 +2,19 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "RemiseCMR — Kiosque iPad · Collège Mont-Royal",
-  description: "Remise des laptops et attribution des casiers — Collège Mont-Royal",
-  icons: { icon: "/cmr-logo.png" },
+  title: "RemiseCMR — Collège Mont-Royal",
+  description: "Système de remise des portables et casiers aux élèves",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/cmr-logo.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Remise CMR",
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -13,7 +23,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#2D0F75",
+  themeColor: "#003c71",
 };
 
 export default function RootLayout({

@@ -401,9 +401,9 @@ export function KV({
 
 // ─── Friendly initials avatar ──────────────────────────────
 export function Avatar({ student, size = 64 }: { student: any; size?: number }) {
-  const initials = (
-    (student.first?.[0] ?? "") + (student.last?.[0] ?? "")
-  ).toUpperCase();
+  const first = student.firstName ?? student.first ?? "";
+  const last = student.lastName ?? student.last ?? "";
+  const initials = ((first[0] ?? "") + (last[0] ?? "")).toUpperCase();
   const hue = student.color ?? 264;
   return (
     <div

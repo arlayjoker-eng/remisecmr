@@ -1,55 +1,44 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
-function slug(name: string) {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [
     Credentials({
-      name: "Kiosque",
+      name: "RemiseCMR",
       credentials: {
-        name: { label: "Nom", type: "text" },
-        mode: { label: "Mode", type: "text" },
+        email: { label: "Courriel", type: "email" },
+        password: { label: "Mot de passe", type: "password" },
       },
-      // Passwordless kiosk login: the iPad is physically secured, the operator
-      // types their name and picks a mode. We find-or-create the Operator row.
       authorize: async (creds) => {
-        const name = String(creds?.name ?? "").trim();
-        const modeRaw = String(creds?.mode ?? "laptop");
-        if (name.length < 4) return null;
-        const role = modeRaw === "casier" ? "casier" : "laptop";
+        try {
+          const email = String(creds?.email ?? "").trim().toLowerCase();
+          const password = String(creds?.password ?? "");
+          if (!email || !password) return null;
 
-        const { prisma } = await import("@/lib/db");
-        const email = `${slug(name)}@kiosk.local`;
+          // prisma loaded dynamically so it stays out of the edge/middleware bundle
+          const { prisma } = await import("@/lib/db");
+          const bcryptMod: any = await import("bcryptjs");
+          const bcrypt = bcryptMod.default ?? bcryptMod;
 
-        let operator = await prisma.operator.findUnique({ where: { email } });
-        if (!operator) {
-          operator = await prisma.operator.create({
-            data: { email, fullName: name, role, passwordHash: "" },
-          });
-        } else if (operator.role !== role || operator.fullName !== name) {
-          operator = await prisma.operator.update({
-            where: { id: operator.id },
-            data: { role, fullName: name },
-          });
+          const user = await prisma.user.findUnique({ where: { email } });
+          if (!user || !user.active) return null;
+
+          const ok = await bcrypt.compare(password, user.passwordHash);
+          if (!ok) return null;
+
+          return {
+            id: user.id,
+            name: user.fullName,
+            email: user.email,
+            role: user.role,
+          };
+        } catch (e) {
+          console.error("[authorize] error:", e);
+          return null;
         }
-
-        return {
-          id: operator.id,
-          name: operator.fullName,
-          email: operator.email,
-          role: operator.role,
-        };
       },
     }),
   ],
@@ -57,15 +46,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     jwt: ({ token, user }) => {
       if (user) {
         token.role = (user as { role?: string }).role;
-        token.operatorId = user.id;
+        token.userId = user.id;
       }
       return token;
     },
     session: ({ session, token }) => {
       if (session.user) {
         (session.user as { role?: string }).role = token.role as string;
-        (session.user as { operatorId?: string }).operatorId =
-          token.operatorId as string;
+        (session.user as { id?: string }).id = token.userId as string;
       }
       return session;
     },

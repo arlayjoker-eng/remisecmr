@@ -1,33 +1,25 @@
 "use client";
-// Scanner — operator home base. Live camera + role-aware queue.
-// Port of `screen-scanner-kido.jsx`, wired to the barcode camera + router.
+// Scanner — caméra live + file d'attente. Mode laptop ou casier.
 import React from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { K, Pill, Avatar, Icons, LaptopMascot, PadlockMascot, Btn } from "@/components/ui";
 import BarcodeScanner from "@/components/BarcodeScanner";
-
-type Student = {
-  id: string;
-  code: string;
-  first: string;
-  last: string;
-  group: string;
-  box: string;
-  paid: boolean;
-  status: string;
-  color: number;
-  deliveredAt: string | null;
-};
+import type { ClientStudent } from "@/lib/mappers";
 
 type Props = {
-  queue: Student[];
-  delivered: Student[];
-  operator: { name: string; role: string; initials: string };
+  queue: ClientStudent[];
+  delivered: ClientStudent[];
+  operatorName: string;
   mode: "laptop" | "casier";
 };
 
-export default function ScannerScreen({ queue, delivered, operator, mode }: Props) {
+export default function ScannerScreen({
+  queue,
+  delivered,
+  operatorName,
+  mode,
+}: Props) {
   const router = useRouter();
   const [tab, setTab] = React.useState<"pending" | "delivered">("pending");
   const [manual, setManual] = React.useState("");
@@ -43,10 +35,9 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
   const progress = total ? Math.round((doneCount / total) * 100) : 0;
 
   React.useEffect(() => {
-    const tick = () => {
-      const d = new Date();
+    const tick = () =>
       setNow(
-        d
+        new Date()
           .toLocaleString("fr-FR", {
             weekday: "short",
             day: "2-digit",
@@ -56,14 +47,17 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
           })
           .toUpperCase(),
       );
-    };
     tick();
     const t = setInterval(tick, 30000);
     return () => clearInterval(t);
   }, []);
 
-  const goTo = (s: Student) => {
-    router.push(mode === "casier" ? `/casier/${s.id}` : `/student/${s.id}`);
+  const goTo = (studentNumber: string) => {
+    router.push(
+      mode === "casier"
+        ? `/casier/${encodeURIComponent(studentNumber)}`
+        : `/student/${encodeURIComponent(studentNumber)}`,
+    );
   };
 
   const resolve = async (raw: string) => {
@@ -72,18 +66,17 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
     setBusy(true);
     setScanError("");
     const all = [...queue, ...delivered];
-    let s: Student | undefined = all.find(
+    let s = all.find(
       (x) =>
-        x.code.toLowerCase() === v.toLowerCase() ||
-        x.id.toLowerCase() === v.toLowerCase() ||
-        `${x.first} ${x.last}`.toLowerCase() === v.toLowerCase(),
+        x.studentNumber.toLowerCase() === v.toLowerCase() ||
+        `${x.firstName} ${x.lastName}`.toLowerCase() === v.toLowerCase(),
     );
     if (!s) {
       try {
         const r = await fetch(`/api/students/${encodeURIComponent(v)}`);
-        if (r.ok) s = (await r.json()) as Student;
+        if (r.ok) s = (await r.json()) as ClientStudent;
       } catch {
-        /* network */
+        /* réseau */
       }
     }
     if (!s) {
@@ -92,8 +85,10 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
       setTimeout(() => setScanError(""), 3500);
       return;
     }
-    goTo(s);
+    goTo(s.studentNumber);
   };
+
+  const accent = mode === "casier" ? "#2BB070" : K.violet;
 
   return (
     <div
@@ -142,7 +137,6 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                 color: "rgba(255,255,255,0.62)",
                 fontWeight: 700,
                 marginTop: 4,
-                letterSpacing: 0.4,
               }}
             >
               Collège Mont-Royal · Campus principal
@@ -151,16 +145,12 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <ModeBadge mode={mode} />
-          <div
-            style={{
-              width: 1,
-              height: 22,
-              background: "rgba(255,255,255,0.18)",
-            }}
-          />
-          <Pill tone="live" icon={<Dot color="#fff" />}>
-            VPS · Live
-          </Pill>
+          <button
+            onClick={() => router.push("/scan")}
+            style={chipBtnStyle}
+          >
+            Changer de mode
+          </button>
           <div
             style={{
               fontFamily: K.mono,
@@ -173,19 +163,7 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
           </div>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            style={{
-              border: "none",
-              background: "rgba(255,255,255,0.10)",
-              color: "#fff",
-              borderRadius: 999,
-              padding: "8px 14px",
-              fontFamily: K.display,
-              fontWeight: 800,
-              fontSize: 11,
-              letterSpacing: 0.8,
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
+            style={chipBtnStyle}
           >
             Déconnexion
           </button>
@@ -204,23 +182,23 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
         }}
       >
         <KpiCard
-          label={mode === "casier" ? "Casiers à remettre" : "Laptops en attente"}
+          label={mode === "casier" ? "Casiers à remettre" : "Portables en attente"}
           value={pendingCount}
           sub="aujourd'hui"
           tone="cream"
           icon={mode === "casier" ? "🔒" : "💻"}
         />
         <KpiCard
-          label={mode === "casier" ? "Casiers remis" : "Laptops remis"}
+          label={mode === "casier" ? "Casiers remis" : "Portables remis"}
           value={doneCount}
           sub={`${progress}% complété`}
           tone="green"
           icon="✅"
         />
         <KpiCard
-          label={mode === "casier" ? "Total casiers" : "Total programmé"}
+          label="Total programmé"
           value={total}
-          sub={mode === "casier" ? "avec binômes" : "familles"}
+          sub="élèves"
           tone="violet"
           icon={mode === "casier" ? "🧳" : "🎒"}
         />
@@ -279,7 +257,7 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
               <div
                 style={{
                   fontFamily: K.display,
-                  fontSize: 40,
+                  fontSize: 38,
                   fontWeight: 800,
                   color: K.ink,
                   letterSpacing: -1.2,
@@ -287,12 +265,7 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                   marginTop: 6,
                 }}
               >
-                Scannez le{" "}
-                <span
-                  style={{ color: mode === "casier" ? "#2BB070" : K.violet }}
-                >
-                  code élève
-                </span>
+                Scannez le <span style={{ color: accent }}>code élève</span>
               </div>
               <div
                 style={{
@@ -304,15 +277,15 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                 }}
               >
                 {mode === "casier"
-                  ? "Trouvez l'élève pour lui attribuer son casier et son cadenas. Aucune signature requise."
-                  : "Pointez la caméra vers le code-barres imprimé sur la carte de l'élève. La détection est automatique."}
+                  ? "Trouvez l'élève pour lui attribuer son casier et son cadenas."
+                  : "Pointez la caméra vers le code-barres de la carte de l'élève."}
               </div>
             </div>
             <div style={{ flexShrink: 0 }}>
               {mode === "casier" ? (
-                <PadlockMascot size={150} />
+                <PadlockMascot size={140} />
               ) : (
-                <LaptopMascot size={140} />
+                <LaptopMascot size={130} />
               )}
             </div>
           </div>
@@ -325,10 +298,9 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
               borderRadius: 24,
               overflow: "hidden",
               background: "linear-gradient(180deg, #2D0F75 0%, #1B0945 100%)",
-              minHeight: 280,
+              minHeight: 260,
             }}
           >
-            {/* Live camera (or fallback) */}
             <div style={{ position: "absolute", inset: 0 }}>
               {camError ? (
                 <>
@@ -346,22 +318,11 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
             <div
               style={{
                 position: "absolute",
-                inset: 0,
-                background:
-                  "radial-gradient(60% 40% at 50% 35%, rgba(255,61,139,0.12), transparent 60%), radial-gradient(60% 50% at 80% 80%, rgba(42,212,212,0.12), transparent 70%)",
-                pointerEvents: "none",
-              }}
-            />
-
-            {/* reticle */}
-            <div
-              style={{
-                position: "absolute",
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%,-50%)",
-                width: 320,
-                height: 320,
+                width: 300,
+                height: 300,
                 borderRadius: 28,
                 border: "3px dashed rgba(255,255,255,0.35)",
                 pointerEvents: "none",
@@ -386,29 +347,7 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
               />
             </div>
 
-            {/* status bubble */}
-            <div
-              style={{
-                position: "absolute",
-                top: 18,
-                left: 18,
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "8px 14px",
-                borderRadius: 999,
-                background: "rgba(255,255,255,0.14)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                border: "1px solid rgba(255,255,255,0.18)",
-                color: "#fff",
-                fontWeight: 800,
-                fontSize: 12,
-                letterSpacing: 0.8,
-                textTransform: "uppercase",
-                fontFamily: K.display,
-              }}
-            >
+            <div style={statusBubbleStyle}>
               <span
                 style={{
                   width: 8,
@@ -422,7 +361,6 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
               {camError ? "Caméra indisponible" : "Caméra active"}
             </div>
 
-            {/* scan error toast */}
             {scanError && (
               <div
                 style={{
@@ -442,7 +380,6 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
               </div>
             )}
 
-            {/* manual override */}
             <div
               style={{
                 position: "absolute",
@@ -475,7 +412,7 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                   onKeyDown={(e) => {
                     if (e.key === "Enter") resolve(manual);
                   }}
-                  placeholder="Saisir un matricule, un nom ou un code…"
+                  placeholder="Saisir un numéro d'élève ou un nom…"
                   style={{
                     background: "transparent",
                     border: "none",
@@ -484,7 +421,6 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                     fontSize: 15,
                     fontWeight: 700,
                     fontFamily: K.display,
-                    letterSpacing: -0.1,
                     width: "100%",
                   }}
                 />
@@ -493,7 +429,7 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                 kind="cta"
                 size="lg"
                 icon={Icons.play({ size: 20, stroke: "#fff" })}
-                onClick={() => resolve(manual || queue[0]?.code || "")}
+                onClick={() => resolve(manual)}
               >
                 Rechercher
               </Btn>
@@ -513,18 +449,18 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
             <div style={{ display: "flex", gap: 16 }}>
               <span>● Caméra arrière</span>
               <span>● Détection 1D + QR</span>
-              <span>● {operator.name}</span>
+              <span>● {operatorName}</span>
             </div>
             <div style={{ fontFamily: K.mono, color: K.ink4 }}>
-              RemiseCMR · kiosk v1.0
+              RemiseCMR · kiosk v2.0
             </div>
           </div>
         </div>
 
-        {/* Right rail — queue */}
+        {/* Queue */}
         <div
           style={{
-            width: 400,
+            width: 380,
             background: "#fff",
             borderRadius: 32,
             padding: 22,
@@ -604,7 +540,7 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                 }}
               >
                 {tab === "pending"
-                  ? "Aucun élève en attente. 🎉"
+                  ? "Aucun élève en attente."
                   : "Aucune remise pour l'instant."}
               </div>
             )}
@@ -613,7 +549,7 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                 key={s.id}
                 student={s}
                 variant={tab}
-                onPick={() => goTo(s)}
+                onPick={() => goTo(s.studentNumber)}
               />
             ))}
           </div>
@@ -642,12 +578,16 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                 fontFamily: K.display,
                 fontWeight: 800,
                 fontSize: 13,
-                letterSpacing: -0.3,
                 border: "2px solid #fff",
                 boxShadow: "0 2px 0 #2D0F75",
               }}
             >
-              {operator.initials}
+              {operatorName
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((w) => w[0] || "")
+                .join("")
+                .toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
@@ -655,46 +595,59 @@ export default function ScannerScreen({ queue, delivered, operator, mode }: Prop
                   fontSize: 13,
                   fontWeight: 800,
                   color: K.ink,
-                  letterSpacing: -0.1,
+                  fontFamily: K.display,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
-                  fontFamily: K.display,
                 }}
               >
-                {operator.name}
+                {operatorName}
               </div>
-              <div
-                style={{ fontSize: 11, color: K.ink3, fontWeight: 700 }}
-              >
-                {operator.role}
+              <div style={{ fontSize: 11, color: K.ink3, fontWeight: 700 }}>
+                {mode === "casier" ? "Mode Casier" : "Mode Portable"}
               </div>
             </div>
-            <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              style={{
-                border: "none",
-                background: "#fff",
-                borderRadius: 999,
-                padding: "8px 14px",
-                fontSize: 11,
-                fontWeight: 800,
-                color: K.ink2,
-                textTransform: "uppercase",
-                letterSpacing: 0.8,
-                fontFamily: K.display,
-                cursor: "pointer",
-                boxShadow: "0 2px 0 rgba(27,15,69,0.10)",
-              }}
-            >
-              Sortir
-            </button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+const chipBtnStyle: React.CSSProperties = {
+  border: "none",
+  background: "rgba(255,255,255,0.10)",
+  color: "#fff",
+  borderRadius: 999,
+  padding: "8px 14px",
+  fontFamily: K.display,
+  fontWeight: 800,
+  fontSize: 11,
+  letterSpacing: 0.8,
+  textTransform: "uppercase",
+  cursor: "pointer",
+};
+
+const statusBubbleStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 18,
+  left: 18,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "8px 14px",
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.14)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
+  border: "1px solid rgba(255,255,255,0.18)",
+  color: "#fff",
+  fontWeight: 800,
+  fontSize: 12,
+  letterSpacing: 0.8,
+  textTransform: "uppercase",
+  fontFamily: K.display,
+};
 
 function Logo() {
   return (
@@ -714,7 +667,7 @@ function Logo() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/cmr-logo.png"
-        alt="Collège Mont-Royal"
+        alt="CMR"
         style={{ width: "100%", height: "100%", objectFit: "contain" }}
       />
     </div>
@@ -725,7 +678,7 @@ function ModeBadge({ mode }: { mode: "laptop" | "casier" }) {
   const m =
     mode === "casier"
       ? { label: "Mode Casier", color: "#6AE3A8" }
-      : { label: "Mode Laptop", color: "#B589F0" };
+      : { label: "Mode Portable", color: "#B589F0" };
   return (
     <div
       style={{
@@ -753,39 +706,8 @@ function ModeBadge({ mode }: { mode: "laptop" | "casier" }) {
           boxShadow: `0 0 10px ${m.color}`,
         }}
       />
-      {mode === "casier" ? (
-        <svg width="14" height="14" viewBox="0 0 44 44">
-          <path
-            d="M14 20 Q14 10 22 10 Q30 10 30 20"
-            stroke="#fff"
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <rect x="9" y="20" width="26" height="19" rx="3" fill="#fff" />
-        </svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 44 44">
-          <rect x="6" y="12" width="32" height="20" rx="2" fill="#fff" />
-          <path d="M4 33 L40 33 L37 38 L7 38 Z" fill="#fff" />
-        </svg>
-      )}
       {m.label}
     </div>
-  );
-}
-
-function Dot({ color = "#fff" }: { color?: string }) {
-  return (
-    <span
-      style={{
-        width: 7,
-        height: 7,
-        borderRadius: 4,
-        background: color,
-        animation: "pulse 1.4s ease-in-out infinite",
-      }}
-    />
   );
 }
 
@@ -802,7 +724,7 @@ function KpiCard({
   tone: "cream" | "green" | "violet";
   icon: string;
 }) {
-  const tones: Record<string, any> = {
+  const tones: Record<string, { bg: string; ink: string }> = {
     cream: { bg: K.surfaceWarm, ink: "#8A5A14" },
     green: { bg: K.greenSoft, ink: "#1F8A47" },
     violet: { bg: "#fff", ink: K.violetDeep },
@@ -818,8 +740,6 @@ function KpiCard({
         alignItems: "center",
         gap: 14,
         boxShadow: "0 14px 30px rgba(15,0,60,0.25)",
-        position: "relative",
-        overflow: "hidden",
       }}
     >
       <div
@@ -884,7 +804,6 @@ function KpiCard({
 function ProgressCard({ value }: { value: number }) {
   const r = 30;
   const c = 2 * Math.PI * r;
-  const offset = c * (1 - value / 100);
   return (
     <div
       style={{
@@ -922,7 +841,7 @@ function ProgressCard({ value }: { value: number }) {
             fill="none"
             strokeLinecap="round"
             strokeDasharray={c}
-            strokeDashoffset={offset}
+            strokeDashoffset={c * (1 - value / 100)}
           />
         </svg>
         <div
@@ -935,7 +854,6 @@ function ProgressCard({ value }: { value: number }) {
             fontFamily: K.display,
             fontSize: 18,
             fontWeight: 800,
-            letterSpacing: -0.5,
           }}
         >
           {value}%
@@ -960,8 +878,6 @@ function ProgressCard({ value }: { value: number }) {
             fontSize: 20,
             fontWeight: 800,
             marginTop: 2,
-            letterSpacing: -0.3,
-            lineHeight: 1.1,
           }}
         >
           Bonne route !
@@ -972,13 +888,12 @@ function ProgressCard({ value }: { value: number }) {
 }
 
 function Corner({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
-  const map: Record<string, any> = {
-    tl: { top: -3, left: -3, borderTop: 5, borderLeft: 5 },
-    tr: { top: -3, right: -3, borderTop: 5, borderRight: 5 },
-    bl: { bottom: -3, left: -3, borderBottom: 5, borderLeft: 5 },
-    br: { bottom: -3, right: -3, borderBottom: 5, borderRight: 5 },
+  const m: Record<string, React.CSSProperties> = {
+    tl: { top: -3, left: -3, borderTopWidth: 5, borderLeftWidth: 5 },
+    tr: { top: -3, right: -3, borderTopWidth: 5, borderRightWidth: 5 },
+    bl: { bottom: -3, left: -3, borderBottomWidth: 5, borderLeftWidth: 5 },
+    br: { bottom: -3, right: -3, borderBottomWidth: 5, borderRightWidth: 5 },
   };
-  const m = map[pos];
   return (
     <div
       style={{
@@ -989,14 +904,7 @@ function Corner({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
         borderColor: "#FFD23F",
         borderStyle: "solid",
         borderWidth: 0,
-        ...(m.top !== undefined ? { top: m.top } : {}),
-        ...(m.bottom !== undefined ? { bottom: m.bottom } : {}),
-        ...(m.left !== undefined ? { left: m.left } : {}),
-        ...(m.right !== undefined ? { right: m.right } : {}),
-        borderTopWidth: m.borderTop || 0,
-        borderRightWidth: m.borderRight || 0,
-        borderBottomWidth: m.borderBottom || 0,
-        borderLeftWidth: m.borderLeft || 0,
+        ...m[pos],
       }}
     />
   );
@@ -1027,10 +935,7 @@ function Tab({
         textTransform: "uppercase",
         cursor: "pointer",
         textAlign: "center",
-        boxShadow: active
-          ? "0 2px 0 rgba(27,15,69,0.08), 0 6px 14px rgba(27,15,69,0.06)"
-          : "none",
-        transition: "all 0.15s",
+        boxShadow: active ? "0 2px 0 rgba(27,15,69,0.08)" : "none",
       }}
     >
       {children}
@@ -1043,11 +948,10 @@ function QueueRow({
   onPick,
   variant,
 }: {
-  student: Student;
+  student: ClientStudent;
   onPick: () => void;
   variant: "pending" | "delivered";
 }) {
-  const isDelivered = variant === "delivered";
   return (
     <div
       onClick={onPick}
@@ -1058,14 +962,9 @@ function QueueRow({
         padding: "12px 10px",
         borderRadius: 14,
         cursor: "pointer",
-        transition: "background 0.1s",
       }}
-      onMouseEnter={(e) =>
-        (e.currentTarget.style.background = K.surfaceCool)
-      }
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.background = "transparent")
-      }
+      onMouseEnter={(e) => (e.currentTarget.style.background = K.surfaceCool)}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
       <Avatar student={student} size={44} />
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -1081,7 +980,7 @@ function QueueRow({
             textOverflow: "ellipsis",
           }}
         >
-          {student.first} {student.last}
+          {student.firstName} {student.lastName}
         </div>
         <div
           style={{
@@ -1093,44 +992,17 @@ function QueueRow({
             gap: 8,
           }}
         >
-          <span>{student.group.split(" — ")[0]}</span>
+          <span>{student.group}</span>
           <span style={{ color: K.ink4 }}>·</span>
-          <span style={{ fontFamily: K.mono }}>{student.box}</span>
+          <span style={{ fontFamily: K.mono }}>{student.studentNumber}</span>
         </div>
       </div>
-      {isDelivered ? (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-            gap: 4,
-          }}
-        >
-          <Pill
-            tone="success"
-            icon={Icons.check({ size: 12, strokeWidth: 2.5 })}
-          >
-            Remis
-          </Pill>
-          {student.deliveredAt && (
-            <div
-              style={{
-                fontSize: 10.5,
-                color: K.ink4,
-                fontFamily: K.mono,
-                fontWeight: 700,
-              }}
-            >
-              {student.deliveredAt}
-            </div>
-          )}
-        </div>
+      {variant === "delivered" ? (
+        <Pill tone="success" icon={Icons.check({ size: 12, strokeWidth: 2.5 })}>
+          Remis
+        </Pill>
       ) : (
-        <>
-          {!student.paid && <Pill tone="warn">Solde</Pill>}
-          <div style={{ color: K.ink4 }}>{Icons.chev({ size: 18 })}</div>
-        </>
+        <div style={{ color: K.ink4 }}>{Icons.chev({ size: 18 })}</div>
       )}
     </div>
   );
@@ -1143,10 +1015,8 @@ function StarField({ dense = false }: { dense?: boolean }) {
         { x: 78, y: 14, s: 2.2, o: 0.5 },
         { x: 92, y: 36, s: 1.2, o: 0.4 },
         { x: 18, y: 48, s: 1.6, o: 0.5 },
-        { x: 45, y: 22, s: 1.0, o: 0.3 },
         { x: 64, y: 66, s: 1.4, o: 0.5 },
         { x: 86, y: 78, s: 2.0, o: 0.4 },
-        { x: 8, y: 78, s: 1.3, o: 0.4 },
       ]
     : [
         { x: 6, y: 12, s: 1.4, o: 0.45 },
@@ -1188,48 +1058,27 @@ function MockQR() {
     "1011101010110001011101",
     "1000001011001101000001",
     "1111111010101011111111",
-    "0000000100110000000000",
-    "1101011001110011010101",
-    "0110001011000010110010",
-    "1010111100101101001011",
-    "0011001010110001100110",
-    "1110011010011100101101",
-    "0101100110110010010010",
-    "0000000110001011110100",
-    "1111111011010101001011",
-    "1000001110001101001110",
-    "1011101001110010110010",
-    "1011101100100111011001",
-    "1011101010011000110100",
-    "1000001100110101101011",
-    "1111111000011010010110",
   ];
   const cells: React.ReactNode[] = [];
-  for (let r = 0; r < seed.length; r++) {
-    for (let c = 0; c < seed[r].length; c++) {
+  for (let r = 0; r < seed.length; r++)
+    for (let c = 0; c < seed[r].length; c++)
       if (seed[r][c] === "1")
         cells.push(
           <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="#fff" />,
         );
-    }
-  }
   return (
     <div
       style={{
         position: "absolute",
         left: "50%",
         top: "50%",
-        transform: "translate(-50%,-50%) rotate(-2deg)",
-        width: 180,
-        height: 180,
-        borderRadius: 18,
-        background: "rgba(255,255,255,0.06)",
-        padding: 14,
-        boxSizing: "border-box",
-        opacity: 0.85,
+        transform: "translate(-50%,-50%)",
+        width: 150,
+        height: 48,
+        opacity: 0.7,
       }}
     >
-      <svg viewBox="0 0 22 22" width="100%" height="100%">
+      <svg viewBox="0 0 22 7" width="100%" height="100%">
         {cells}
       </svg>
     </div>

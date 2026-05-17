@@ -1,42 +1,35 @@
 "use client";
-// Admin CSV import — students.csv and lockers.csv.
+// Admin CSV import — listes Portables et Casiers.
 import React from "react";
 import { useRouter } from "next/navigation";
 import { K, Btn, Icons } from "@/components/ui";
 
-type Result = { imported: number; total: number; errors: string[] } | null;
+type Result = {
+  ok: boolean;
+  total: number;
+  imported: number;
+  errors: string[];
+} | null;
+
+const LAPTOP_HEADERS =
+  "student_number,first_name,last_name,email,group,level,box_number,laptop_serial,laptop_model";
+const LOCKER_HEADERS =
+  "student_number,first_name,last_name,group,level,locker_number,combination_code";
+
+function downloadTemplate(filename: string, headers: string) {
+  const blob = new Blob(["﻿" + headers + "\r\n"], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function ImportScreen() {
   const router = useRouter();
-  const [studentRes, setStudentRes] = React.useState<Result>(null);
-  const [lockerRes, setLockerRes] = React.useState<Result>(null);
-  const [busy, setBusy] = React.useState<"" | "students" | "lockers">("");
-  const [err, setErr] = React.useState("");
-
-  const upload = async (
-    kind: "students" | "lockers",
-    file: File | undefined,
-  ) => {
-    if (!file) return;
-    setBusy(kind);
-    setErr("");
-    try {
-      const text = await file.text();
-      const res = await fetch(`/api/${kind}/import`, {
-        method: "POST",
-        headers: { "Content-Type": "text/csv" },
-        body: text,
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j?.error || "Échec de l'import");
-      if (kind === "students") setStudentRes(j);
-      else setLockerRes(j);
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setBusy("");
-    }
-  };
 
   return (
     <div
@@ -49,7 +42,7 @@ export default function ImportScreen() {
         overflow: "auto",
       }}
     >
-      <div style={{ maxWidth: 880, margin: "0 auto" }}>
+      <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <div
           style={{
             display: "flex",
@@ -80,58 +73,33 @@ export default function ImportScreen() {
                 marginTop: 4,
               }}
             >
-              Importer les données
+              Importer les listes
             </div>
           </div>
           <Btn
             kind="ghostDark"
             size="md"
             icon={Icons.back({ size: 20, stroke: "#fff" })}
-            onClick={() => router.push("/scan")}
+            onClick={() => router.push("/admin")}
           >
-            Retour
+            Annuler
           </Btn>
         </div>
 
-        {err && (
-          <div
-            style={{
-              background: K.red,
-              borderRadius: 14,
-              padding: "12px 18px",
-              fontWeight: 700,
-              fontSize: 13,
-              marginBottom: 18,
-            }}
-          >
-            {err}
-          </div>
-        )}
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 18,
-          }}
-        >
-          <UploadCard
-            title="Élèves"
-            kind="students"
-            hint="id, code, first_name, last_name, group, device, serial, accessories, tutor_name, tutor_phone, paid"
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <UploadSection
+            title="Importer la liste des élèves recevant un PORTABLE"
+            endpoint="/api/admin/import/laptops"
+            headers={LAPTOP_HEADERS}
+            templateName="modele_portables.csv"
             accent={K.violet}
-            busy={busy === "students"}
-            result={studentRes}
-            onFile={(f) => upload("students", f)}
           />
-          <UploadCard
-            title="Casiers"
-            kind="lockers"
-            hint="locker_number, owner_id, brand, code, aisle"
+          <UploadSection
+            title="Importer la liste des élèves recevant un CASIER"
+            endpoint="/api/admin/import/lockers"
+            headers={LOCKER_HEADERS}
+            templateName="modele_casiers.csv"
             accent={K.teal}
-            busy={busy === "lockers"}
-            result={lockerRes}
-            onFile={(f) => upload("lockers", f)}
           />
         </div>
 
@@ -143,32 +111,61 @@ export default function ImportScreen() {
             fontFamily: K.mono,
           }}
         >
-          Les imports utilisent un upsert : ré-importer un fichier met à jour
-          les fiches existantes sans créer de doublons.
+          Import atomique : si une seule ligne contient une erreur, rien n'est
+          importé. Ré-importer un fichier met à jour les fiches existantes
+          (upsert) sans créer de doublons ni réinitialiser les remises déjà
+          effectuées.
         </div>
       </div>
     </div>
   );
 }
 
-function UploadCard({
+function UploadSection({
   title,
-  kind,
-  hint,
+  endpoint,
+  headers,
+  templateName,
   accent,
-  busy,
-  result,
-  onFile,
 }: {
   title: string;
-  kind: string;
-  hint: string;
+  endpoint: string;
+  headers: string;
+  templateName: string;
   accent: string;
-  busy: boolean;
-  result: Result;
-  onFile: (f: File | undefined) => void;
 }) {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const [result, setResult] = React.useState<Result>(null);
+  const [fileName, setFileName] = React.useState("");
+
+  const upload = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    setResult(null);
+    setFileName(file.name);
+    try {
+      const text = await file.text();
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "text/csv;charset=utf-8" },
+        body: text,
+      });
+      const j = await res.json();
+      setResult(j as Result);
+    } catch (e) {
+      setResult({
+        ok: false,
+        total: 0,
+        imported: 0,
+        errors: [`Erreur réseau: ${(e as Error).message}`],
+      });
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
   return (
     <div
       style={{
@@ -185,13 +182,14 @@ function UploadCard({
       <div
         style={{
           fontFamily: K.display,
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: 800,
           color: K.ink,
         }}
       >
         {title}
       </div>
+
       <div
         style={{
           fontFamily: K.mono,
@@ -201,53 +199,84 @@ function UploadCard({
           borderRadius: 10,
           padding: "10px 12px",
           lineHeight: 1.5,
+          wordBreak: "break-word",
         }}
       >
-        {hint}
+        {headers}
       </div>
+
       <input
         ref={inputRef}
         type="file"
         accept=".csv,text/csv"
         style={{ display: "none" }}
-        onChange={(e) => onFile(e.target.files?.[0])}
+        onChange={(e) => upload(e.target.files?.[0])}
       />
-      <Btn
-        kind="primary"
-        size="md"
-        full
-        disabled={busy}
-        icon={Icons.download({ size: 20, stroke: "#fff" })}
-        onClick={() => inputRef.current?.click()}
-        style={{ background: accent }}
-      >
-        {busy ? "Import en cours…" : `Choisir un fichier .csv`}
-      </Btn>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Btn
+          kind="ghost"
+          size="md"
+          icon={Icons.download({ size: 18 })}
+          onClick={() => downloadTemplate(templateName, headers)}
+        >
+          Télécharger le modèle CSV
+        </Btn>
+        <Btn
+          kind="primary"
+          size="md"
+          disabled={busy}
+          icon={Icons.doc({ size: 18, stroke: "#fff" })}
+          onClick={() => inputRef.current?.click()}
+          style={{ background: accent }}
+        >
+          {busy ? "Import en cours…" : "Choisir un fichier CSV"}
+        </Btn>
+        {result && (
+          <Btn kind="ghost" size="md" onClick={() => setResult(null)}>
+            Effacer
+          </Btn>
+        )}
+      </div>
+
       {result && (
         <div
           style={{
-            background: K.greenSoft,
-            borderRadius: 12,
-            padding: "12px 14px",
-            fontSize: 13,
-            fontWeight: 700,
-            color: "#1F8A47",
+            background: result.ok ? K.greenSoft : K.pinkSoft,
+            borderRadius: 14,
+            padding: "14px 16px",
           }}
         >
-          {result.imported} / {result.total} lignes importées.
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 800,
+              color: result.ok ? "#1F8A47" : "#B2245A",
+            }}
+          >
+            {result.ok
+              ? `✓ ${result.imported} / ${result.total} lignes importées${fileName ? ` — ${fileName}` : ""}`
+              : `✗ Import annulé — ${result.errors.length} erreur(s) sur ${result.total} ligne(s)`}
+          </div>
           {result.errors.length > 0 && (
             <ul
               style={{
-                margin: "8px 0 0",
+                margin: "10px 0 0",
                 paddingLeft: 18,
                 color: "#B2245A",
                 fontWeight: 600,
-                fontSize: 12,
+                fontSize: 12.5,
+                lineHeight: 1.6,
+                maxHeight: 200,
+                overflow: "auto",
               }}
             >
-              {result.errors.slice(0, 6).map((e, i) => (
+              {result.errors.slice(0, 50).map((e, i) => (
                 <li key={i}>{e}</li>
               ))}
+              {result.errors.length > 50 && (
+                <li>… et {result.errors.length - 50} autre(s)</li>
+              )}
             </ul>
           )}
         </div>

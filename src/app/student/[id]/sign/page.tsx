@@ -12,14 +12,16 @@ export default async function SignPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const key = decodeURIComponent(id);
   const session = await auth();
-  const student = await prisma.student.findUnique({
-    where: { id: decodeURIComponent(id) },
-    include: { delivery: true },
+  const student = await prisma.student.findFirst({
+    where: { OR: [{ studentNumber: key }, { id: key }] },
+    include: { deliveries: { where: { type: "LAPTOP" } } },
   });
   if (!student) notFound();
-  if (student.delivery) redirect(`/student/${student.id}/receipt`);
-
+  if (student.deliveries.length > 0) {
+    redirect(`/student/${student.studentNumber}/receipt`);
+  }
   return (
     <SignatureScreen
       student={toClientStudent(student)}

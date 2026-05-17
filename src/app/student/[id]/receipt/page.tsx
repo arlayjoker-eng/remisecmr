@@ -1,4 +1,3 @@
-import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { toClientStudent } from "@/lib/mappers";
 import { notFound } from "next/navigation";
@@ -12,14 +11,16 @@ export default async function ReceiptPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await auth();
-  const student = await prisma.student.findUnique({
-    where: { id: decodeURIComponent(id) },
-    include: { delivery: { include: { operator: true } } },
+  const key = decodeURIComponent(id);
+  const student = await prisma.student.findFirst({
+    where: { OR: [{ studentNumber: key }, { id: key }] },
+    include: {
+      deliveries: { where: { type: "LAPTOP" }, include: { operator: true } },
+    },
   });
-  if (!student || !student.delivery) notFound();
+  if (!student || student.deliveries.length === 0) notFound();
 
-  const d = student.delivery;
+  const d = student.deliveries[0];
   const sigDataUrl = d.signaturePng
     ? `data:image/png;base64,${Buffer.from(d.signaturePng).toString("base64")}`
     : null;
@@ -28,13 +29,11 @@ export default async function ReceiptPage({
     <ReceiptScreen
       student={toClientStudent(student)}
       signature={{
-        tutorName: d.tutorNameTyped,
-        tutorId: d.tutorIdLast4,
+        tutorName: d.tutorNameTyped || "",
+        tutorId: d.tutorIdLast4 || "",
         signaturePng: sigDataUrl,
       }}
-      operatorName={
-        d.operator?.fullName || session?.user?.name || "Opérateur"
-      }
+      operatorName={d.operator?.fullName || "Opérateur"}
     />
   );
 }

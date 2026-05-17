@@ -1,40 +1,26 @@
 "use client";
-// Signature screen — the parent signs inside the PDF-style document.
-// Port of `screen-signature-kido.jsx`, wired to POST /api/deliveries.
+// Signature — le parent signe dans le document (flux PORTABLE).
 import React from "react";
 import { useRouter } from "next/navigation";
 import { K, Btn, Pill, Icons, Spinner } from "@/components/ui";
 import SavingProgress from "@/components/screens/SavingProgress";
 import SuccessCheer from "@/components/screens/SuccessCheer";
+import type { ClientStudent } from "@/lib/mappers";
 
 const C = K;
-
-type Student = {
-  id: string;
-  code: string;
-  first: string;
-  last: string;
-  group: string;
-  box: string;
-  device: string;
-  serial: string;
-  accessories: string[];
-  tutor: string;
-  tutorPhone: string;
-};
 
 export default function SignatureScreen({
   student,
   operatorName,
 }: {
-  student: Student;
+  student: ClientStudent;
   operatorName: string;
 }) {
   const router = useRouter();
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [hasSigned, setHasSigned] = React.useState(false);
   const [accepted, setAccepted] = React.useState(false);
-  const [tutorName, setTutorName] = React.useState(student.tutor);
+  const [tutorName, setTutorName] = React.useState("");
   const [tutorId, setTutorId] = React.useState("");
   const [saved, setSaved] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -44,7 +30,7 @@ export default function SignatureScreen({
   const last = React.useRef({ x: 0, y: 0 });
   const postRef = React.useRef<Promise<Response> | null>(null);
 
-  const folio = `AE-26-${student.id.slice(-4)}`;
+  const folio = `AE-26-${student.studentNumber}`;
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
@@ -108,7 +94,7 @@ export default function SignatureScreen({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        studentId: student.id,
+        studentNumber: student.studentNumber,
         tutorName: tutorName.trim(),
         tutorIdLast4: tutorId.trim(),
         signaturePngDataUrl,
@@ -128,9 +114,7 @@ export default function SignatureScreen({
       setCelebrating(true);
     } catch {
       setSaving(false);
-      setError(
-        "L'enregistrement a échoué. Vérifiez la connexion et réessayez.",
-      );
+      setError("L'enregistrement a échoué. Vérifiez la connexion et réessayez.");
     }
   };
 
@@ -144,7 +128,6 @@ export default function SignatureScreen({
         position: "relative",
       }}
     >
-      {/* Top bar */}
       <div
         style={{
           display: "flex",
@@ -157,7 +140,7 @@ export default function SignatureScreen({
         }}
       >
         <button
-          onClick={() => router.push(`/student/${student.id}`)}
+          onClick={() => router.push(`/student/${student.studentNumber}`)}
           disabled={saving || saved}
           style={{
             width: 40,
@@ -180,19 +163,10 @@ export default function SignatureScreen({
             {Icons.doc({ size: 22, stroke: "currentColor" })}
           </div>
           <div>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 800,
-                letterSpacing: -0.2,
-                color: C.ink,
-              }}
-            >
+            <div style={{ fontSize: 14, fontWeight: 800, color: C.ink }}>
               Accusé de réception — Réf. {folio}
             </div>
-            <div
-              style={{ fontSize: 11, color: C.ink3, fontFamily: C.mono }}
-            >
+            <div style={{ fontSize: 11, color: C.ink3, fontFamily: C.mono }}>
               recepisse_{folio}.pdf · 1 page
             </div>
           </div>
@@ -207,7 +181,6 @@ export default function SignatureScreen({
         )}
       </div>
 
-      {/* Document area */}
       <div
         style={{
           flex: 1,
@@ -217,7 +190,6 @@ export default function SignatureScreen({
           justifyContent: "center",
           background:
             "repeating-linear-gradient(45deg, #EDEAE3 0 12px, #E7E4DC 12px 24px)",
-          position: "relative",
         }}
       >
         <div
@@ -226,14 +198,13 @@ export default function SignatureScreen({
             maxWidth: 920,
             background: "#fff",
             borderRadius: 8,
-            boxShadow:
-              "0 18px 40px rgba(20,24,35,0.16), 0 2px 8px rgba(20,24,35,0.08)",
+            boxShadow: "0 18px 40px rgba(20,24,35,0.16)",
             padding: "44px 56px 36px",
             position: "relative",
             fontSize: 13,
             color: C.ink2,
             lineHeight: 1.55,
-            minHeight: 760,
+            minHeight: 720,
             display: "flex",
             flexDirection: "column",
             gap: 18,
@@ -251,7 +222,7 @@ export default function SignatureScreen({
                 padding: "10px 22px",
                 borderRadius: 10,
                 fontWeight: 800,
-                fontSize: 22,
+                fontSize: 20,
                 letterSpacing: 2,
                 fontFamily: C.mono,
                 background: "rgba(255,255,255,0.7)",
@@ -263,7 +234,6 @@ export default function SignatureScreen({
             </div>
           )}
 
-          {/* Letterhead */}
           <div
             style={{
               display: "flex",
@@ -279,21 +249,17 @@ export default function SignatureScreen({
                   borderRadius: 12,
                   background: "#fff",
                   padding: 4,
+                  border: `1px solid ${C.line}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  border: `1px solid ${C.line}`,
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/cmr-logo.png"
                   alt="CMR"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 />
               </div>
               <div>
@@ -307,9 +273,7 @@ export default function SignatureScreen({
                 >
                   Collège Mont-Royal
                 </div>
-                <div
-                  style={{ fontSize: 11, color: C.ink3, fontWeight: 600 }}
-                >
+                <div style={{ fontSize: 11, color: C.ink3, fontWeight: 600 }}>
                   Campus principal · Année scolaire 2025–2026 · Programme 1:1
                 </div>
               </div>
@@ -322,9 +286,7 @@ export default function SignatureScreen({
                 color: C.ink3,
               }}
             >
-              <div
-                style={{ fontWeight: 700, color: C.ink, fontSize: 13 }}
-              >
+              <div style={{ fontWeight: 700, color: C.ink, fontSize: 13 }}>
                 {folio}
               </div>
               <div>{new Date().toLocaleDateString("fr-FR")}</div>
@@ -352,7 +314,6 @@ export default function SignatureScreen({
                 fontWeight: 800,
                 color: C.ink,
                 letterSpacing: -0.6,
-                lineHeight: 1.1,
               }}
             >
               Accusé de réception d&apos;équipement scolaire
@@ -380,30 +341,26 @@ export default function SignatureScreen({
           >
             <DocField
               label="Élève"
-              value={`${student.first} ${student.last}`}
+              value={`${student.firstName} ${student.lastName}`}
             />
-            <DocField label="Matricule" value={student.id} mono />
-            <DocField label="Classe / Niveau" value={student.group} />
-            <DocField label="Casier physique" value={student.box} mono />
-            <DocField label="Équipement remis" value={student.device} span />
-            <DocField label="Numéro de série" value={student.serial} mono />
+            <DocField label="Numéro d'élève" value={student.studentNumber} mono />
+            <DocField label="Groupe" value={student.group} />
+            <DocField label="Niveau" value={`Secondaire ${student.level}`} />
+            <DocField label="Boîte N°" value={student.boxNumber || "—"} mono />
             <DocField
-              label="État physique"
-              value="Bon état · scellé d'usine"
-            />
-            <DocField
-              label="Accessoires inclus"
-              value={student.accessories.join(" · ")}
+              label="Modèle du portable"
+              value={student.laptopModel || "—"}
               span
             />
             <DocField
-              label="Parent responsable"
-              value={tutorName || student.tutor}
+              label="Numéro de série"
+              value={student.laptopSerial || "—"}
+              mono
             />
             <DocField
-              label="Téléphone de contact"
-              value={student.tutorPhone}
-              mono
+              label="Parent responsable"
+              value={tutorName || "—"}
+              span
             />
           </div>
 
@@ -435,15 +392,15 @@ export default function SignatureScreen({
               </li>
               <li>
                 Le parent s&apos;engage à un usage responsable et au bon
-                entretien de l&apos;équipement et de ses accessoires.
+                entretien de l&apos;équipement.
               </li>
               <li>
                 Toute perte, vol ou dommage doit être signalé dans un délai
-                maximum de 48 heures à la Coordination Informatique.
+                maximum de 48 heures.
               </li>
               <li>
                 L&apos;équipement devra être rendu à la fin de l&apos;année
-                scolaire dans les mêmes conditions, hors usure normale.
+                scolaire, hors usure normale.
               </li>
             </ol>
           </div>
@@ -456,7 +413,6 @@ export default function SignatureScreen({
               gap: 24,
             }}
           >
-            {/* Operator */}
             <div>
               <div
                 style={{
@@ -467,7 +423,6 @@ export default function SignatureScreen({
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 4,
-                  padding: "0 8px",
                   background: "#FBFAF6",
                   borderRadius: "8px 8px 0 0",
                 }}
@@ -479,7 +434,6 @@ export default function SignatureScreen({
                     fontWeight: 700,
                     textTransform: "uppercase",
                     letterSpacing: 1,
-                    marginBottom: 2,
                   }}
                 >
                   Remis par (session active)
@@ -489,9 +443,7 @@ export default function SignatureScreen({
                     fontSize: 18,
                     fontWeight: 800,
                     color: C.ink,
-                    letterSpacing: -0.3,
                     textAlign: "center",
-                    lineHeight: 1.15,
                   }}
                 >
                   {operatorName}
@@ -509,18 +461,8 @@ export default function SignatureScreen({
               >
                 Remise · Opérateur
               </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: C.ink3,
-                  fontFamily: C.mono,
-                }}
-              >
-                Coordination Informatique
-              </div>
             </div>
 
-            {/* Tutor — signs here */}
             <div>
               <div
                 style={{
@@ -530,11 +472,8 @@ export default function SignatureScreen({
                     hasSigned ? C.ink : "oklch(0.88 0.08 90)"
                   }`,
                   background:
-                    hasSigned || saved
-                      ? "transparent"
-                      : "oklch(0.995 0.012 95)",
+                    hasSigned || saved ? "transparent" : "oklch(0.995 0.012 95)",
                   borderRadius: "8px 8px 0 0",
-                  transition: "background 0.2s",
                 }}
               >
                 <canvas
@@ -566,9 +505,7 @@ export default function SignatureScreen({
                       gap: 6,
                     }}
                   >
-                    <div
-                      style={{ color: "oklch(0.65 0.10 90)", opacity: 0.7 }}
-                    >
+                    <div style={{ color: "oklch(0.65 0.10 90)", opacity: 0.7 }}>
                       {Icons.pen({ size: 26, stroke: "currentColor" })}
                     </div>
                     <div
@@ -576,7 +513,6 @@ export default function SignatureScreen({
                         fontSize: 13,
                         fontWeight: 700,
                         color: "oklch(0.55 0.06 90)",
-                        letterSpacing: -0.2,
                       }}
                     >
                       Signez ici avec le doigt
@@ -626,15 +562,6 @@ export default function SignatureScreen({
               >
                 {tutorName || "—"}
               </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: C.ink3,
-                  fontFamily: C.mono,
-                }}
-              >
-                CNI (4 derniers) : {tutorId || "••••"}
-              </div>
             </div>
           </div>
 
@@ -646,7 +573,6 @@ export default function SignatureScreen({
               fontSize: 10,
               color: C.ink3,
               fontFamily: C.mono,
-              letterSpacing: 0.3,
             }}
           >
             Document horodaté et archivé · empreinte SHA-256 · RemiseCMR
@@ -654,7 +580,6 @@ export default function SignatureScreen({
         </div>
       </div>
 
-      {/* Sticky bottom toolbar */}
       {!saved && (
         <div
           style={{
@@ -682,56 +607,17 @@ export default function SignatureScreen({
               flexWrap: "wrap",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 4,
-                flex: 1,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 10,
-                  color: C.ink3,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.8,
-                }}
-              >
-                Nom du parent
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+              <div style={toolbarLabel}>Nom du parent</div>
               <input
                 value={tutorName}
                 onChange={(e) => setTutorName(e.target.value)}
-                style={{
-                  background: "#fff",
-                  border: `1px solid ${C.lineStrong}`,
-                  borderRadius: 10,
-                  color: C.ink,
-                  height: 40,
-                  padding: "0 14px",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  outline: "none",
-                  minWidth: 220,
-                }}
+                placeholder="Prénom et nom du parent"
+                style={{ ...toolbarInput, minWidth: 220 }}
               />
             </div>
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: 4 }}
-            >
-              <div
-                style={{
-                  fontSize: 10,
-                  color: C.ink3,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.8,
-                }}
-              >
-                CNI — 4 derniers
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={toolbarLabel}>CNI — 4 derniers</div>
               <input
                 value={tutorId}
                 onChange={(e) =>
@@ -740,15 +626,7 @@ export default function SignatureScreen({
                 placeholder="0000"
                 maxLength={4}
                 style={{
-                  background: "#fff",
-                  border: `1px solid ${C.lineStrong}`,
-                  borderRadius: 10,
-                  color: C.ink,
-                  height: 40,
-                  padding: "0 14px",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  outline: "none",
+                  ...toolbarInput,
                   width: 100,
                   fontFamily: C.mono,
                   letterSpacing: 2,
@@ -802,11 +680,7 @@ export default function SignatureScreen({
             kind="success"
             size="lg"
             icon={
-              saving ? (
-                <Spinner />
-              ) : (
-                Icons.download({ size: 22, stroke: "#fff" })
-              )
+              saving ? <Spinner /> : Icons.download({ size: 22, stroke: "#fff" })
             }
             disabled={!canSave}
             onClick={save}
@@ -842,7 +716,9 @@ export default function SignatureScreen({
         <SuccessCheer
           tutorName={tutorName}
           folio={folio}
-          onContinue={() => router.push(`/student/${student.id}/receipt`)}
+          onContinue={() =>
+            router.push(`/student/${student.studentNumber}/receipt`)
+          }
           onDownload={() =>
             window.open(`/api/deliveries/${folio}/pdf`, "_blank", "noopener")
           }
@@ -851,6 +727,26 @@ export default function SignatureScreen({
     </div>
   );
 }
+
+const toolbarLabel: React.CSSProperties = {
+  fontSize: 10,
+  color: C.ink3,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: 0.8,
+};
+
+const toolbarInput: React.CSSProperties = {
+  background: "#fff",
+  border: `1px solid ${C.lineStrong}`,
+  borderRadius: 10,
+  color: C.ink,
+  height: 40,
+  padding: "0 14px",
+  fontSize: 14,
+  fontWeight: 600,
+  outline: "none",
+};
 
 function DocField({
   label,
@@ -883,7 +779,6 @@ function DocField({
           color: C.ink,
           fontFamily: mono ? C.mono : K.display,
           marginTop: 2,
-          letterSpacing: -0.1,
         }}
       >
         {value}

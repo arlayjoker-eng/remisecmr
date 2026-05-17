@@ -1,4 +1,4 @@
-// RemiseCMR — kiosque iPad · Collège Mont-Royal
+// RemiseCMR v2 — kiosque iPad · Collège Mont-Royal
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,64 +8,93 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Operator {
+enum Role {
+  SUPER_ADMIN
+  STAFF_MANAGER
+  OPERATOR
+}
+
+enum LaptopStatus {
+  PENDING
+  DELIVERED
+}
+
+enum LockerStatus {
+  AVAILABLE
+  DELIVERED
+}
+
+enum DeliveryType {
+  LAPTOP
+  CASIER
+}
+
+model User {
   id           String     @id @default(cuid())
   email        String     @unique
-  passwordHash String     @default("")
+  passwordHash String
   fullName     String
-  role         String // "laptop" | "casier" | "admin"
+  role         Role       @default(OPERATOR)
+  active       Boolean    @default(true)
   createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   deliveries   Delivery[]
 }
 
 model Student {
-  id           String    @id // "ELV-24-0142" (from CSV)
-  code         String    @unique // barcode value, e.g. "A24P0142X"
-  firstName    String
-  lastName     String
-  groupName    String // "CM1 A — Primaire"
-  box          String // storage box id, e.g. "CS-014"
-  device       String // "AsusBook 15 OLED — i5 / 16 Go / 512 Go"
-  serial       String    @unique
-  accessories  String // JSON array stored as string
-  tutorName    String
-  tutorPhone   String
-  paid         Boolean   @default(true)
-  laptopStatus String    @default("pending") // "pending" | "delivered"
-  avatarHue    Int // 0-360, deterministic from name
-  createdAt    DateTime  @default(now())
-  delivery     Delivery?
-  ownedLocker  Locker?   @relation("LockerOwner")
-  binomeFor    Locker?   @relation("LockerBinome")
+  id                      String       @id @default(cuid())
+  studentNumber           String       @unique // = code-barres
+  firstName               String
+  lastName                String
+  email                   String?
+  group                   String // "Sec 1A"
+  level                   String // "1".."5"
+  boxNumber               String?
+  laptopSerial            String?
+  laptopModel             String?
+  laptopStatus            LaptopStatus @default(PENDING)
+  receivesLaptop          Boolean      @default(false)
+  receivesLocker          Boolean      @default(false)
+  assignedLockerNumber    String? // casier de A (du CSV)
+  assignedCombinationCode String?
+  lockerDeliveredAt       DateTime?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  deliveries              Delivery[]
+  lockerAsA               Locker?      @relation("LockerOfA")
+  lockerAsB               Locker?      @relation("LockerOfB")
 }
 
 model Locker {
-  id          String    @id @default(cuid())
-  number      String    @unique // "L-A-014"
-  ownerId     String    @unique
-  owner       Student   @relation("LockerOwner", fields: [ownerId], references: [id])
-  binomeId    String?   @unique
-  binome      Student?  @relation("LockerBinome", fields: [binomeId], references: [id])
-  brand       String // "Master Lock 1500iD"
-  code        String // "12-34-08"
-  aisle       String // "Aile A · Rangée 2"
-  status      String    @default("pending") // "pending" | "delivered"
-  deliveredBy String? // operatorId
-  deliveredAt DateTime?
-  updatedAt   DateTime  @updatedAt
+  id                     String       @id @default(cuid())
+  number                 String       @unique
+  combinationCode        String
+  assignedStudentNumberA String?      @unique // alumno A (du CSV)
+  studentA               Student?     @relation("LockerOfA", fields: [assignedStudentNumberA], references: [studentNumber])
+  assignedStudentNumberB String?      @unique // binôme — choisi par les opérateurs
+  studentB               Student?     @relation("LockerOfB", fields: [assignedStudentNumberB], references: [studentNumber])
+  status                 LockerStatus @default(AVAILABLE)
+  delivery               Delivery?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 }
 
 model Delivery {
-  id             String   @id @default(cuid())
-  folio          String   @unique // "AE-26-0142"
-  studentId      String   @unique
-  student        Student  @relation(fields: [studentId], references: [id])
+  id             String       @id @default(cuid())
+  type           DeliveryType
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [id])
   operatorId     String
-  operator       Operator @relation(fields: [operatorId], references: [id])
-  tutorNameTyped String
-  tutorIdLast4   String
-  signaturePng   Bytes
-  pdfPath        String
-  pdfSha256      String
-  deliveredAt    DateTime @default(now())
+  operator       User         @relation(fields: [operatorId], references: [id])
+  lockerId       String?      @unique
+  locker         Locker?      @relation(fields: [lockerId], references: [id])
+  folio          String?      @unique // laptops seulement
+  tutorNameTyped String? // laptops seulement
+  tutorIdLast4   String?
+  signaturePng   Bytes?
+  pdfPath        String?
+  pdfSha256      String?
+  deliveredAt    DateTime     @default(now())
+
+  @@unique([studentId, type])
 }
