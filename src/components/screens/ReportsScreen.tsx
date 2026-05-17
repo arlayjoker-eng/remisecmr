@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { K, Btn, Pill, Icons } from "@/components/ui";
+import RoleNav from "@/components/RoleNav";
 
 type Row = {
   typeKey: string;
@@ -116,7 +117,7 @@ export default function ReportsScreen({
               Suivi des remises
             </div>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <Btn
               kind="ghostDark"
               size="md"
@@ -127,6 +128,7 @@ export default function ReportsScreen({
             >
               Retour
             </Btn>
+            <RoleNav role={role} current="reports" />
             <Btn
               kind="ghostDark"
               size="md"
@@ -280,6 +282,7 @@ export default function ReportsScreen({
                   "Date livraison",
                   "Opérateur",
                   "Binôme",
+                  "Reçu PDF",
                 ].map((h) => (
                   <th
                     key={h}
@@ -333,12 +336,19 @@ export default function ReportsScreen({
                   <td style={{ ...td, fontSize: 12.5 }}>
                     {r.binomeName || "—"}
                   </td>
+                  <td style={td}>
+                    {r.typeKey === "LAPTOP" && r.stateKey === "DELIVERED" ? (
+                      <PdfCell folio={`AE-26-${r.studentNumber}`} />
+                    ) : (
+                      <span style={{ color: K.ink4 }}>—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={11}
                     style={{
                       ...td,
                       textAlign: "center",
@@ -506,6 +516,40 @@ function FilterDate({
         onChange={(e) => onChange(e.target.value)}
         style={ctrlStyle}
       />
+    </div>
+  );
+}
+
+const pdfBtn: React.CSSProperties = {
+  border: "none",
+  borderRadius: 8,
+  padding: "6px 10px",
+  background: K.violetSoft,
+  color: K.violetDeep,
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 800,
+  lineHeight: 1,
+};
+
+function PdfCell({ folio }: { folio: string }) {
+  const url = `/api/deliveries/${folio}/pdf`;
+  return (
+    <div style={{ display: "flex", gap: 6 }}>
+      <button
+        title="Voir le PDF"
+        style={pdfBtn}
+        onClick={() => window.open(url, "_blank", "noopener")}
+      >
+        👁 Voir
+      </button>
+      <button
+        title="Télécharger le PDF"
+        style={pdfBtn}
+        onClick={() => window.open(`${url}?download=1`, "_blank", "noopener")}
+      >
+        ⬇
+      </button>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { promises as fs } from "fs";
 
 // GET — stream the signed receipt PDF (session-protected).
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ folio: string }> },
 ) {
   const session = await auth();
@@ -14,6 +14,8 @@ export async function GET(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { folio } = await ctx.params;
+  // ?download=1 → téléchargement (attachment) ; sinon aperçu (inline)
+  const download = new URL(req.url).searchParams.get("download") === "1";
 
   const delivery = await prisma.delivery.findUnique({ where: { folio } });
   let bytes: Buffer | null = null;
@@ -39,7 +41,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="recepisse_${folio}.pdf"`,
+      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="recepisse_${folio}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   });

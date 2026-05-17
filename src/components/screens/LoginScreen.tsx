@@ -33,8 +33,9 @@ export default function LoginScreen() {
       setLoading(false);
       return;
     }
-    router.push("/");
-    router.refresh();
+    // Hard navigation: garantit que le serveur (middleware + pages) lit le
+    // cookie de session fraîchement posé — pas de course avec le cache RSC.
+    window.location.href = "/";
   };
 
   return (

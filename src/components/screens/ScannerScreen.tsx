@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { K, Pill, Avatar, Icons, LaptopMascot, PadlockMascot, Btn } from "@/components/ui";
 import BarcodeScanner from "@/components/BarcodeScanner";
+import RoleNav from "@/components/RoleNav";
 import type { ClientStudent } from "@/lib/mappers";
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
   delivered: ClientStudent[];
   operatorName: string;
   mode: "laptop" | "casier";
+  role: string;
 };
 
 export default function ScannerScreen({
@@ -19,6 +21,7 @@ export default function ScannerScreen({
   delivered,
   operatorName,
   mode,
+  role,
 }: Props) {
   const router = useRouter();
   const [tab, setTab] = React.useState<"pending" | "delivered">("pending");
@@ -161,6 +164,7 @@ export default function ScannerScreen({
           >
             {now}
           </div>
+          <RoleNav role={role} current="scan" />
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             style={chipBtnStyle}

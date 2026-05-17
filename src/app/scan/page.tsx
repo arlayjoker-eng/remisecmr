@@ -16,6 +16,7 @@ export default async function ScanPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
   const operatorName = session.user.name || "Opérateur";
+  const role = session.user.role || "OPERATOR";
 
   const { mode: modeParam } = await searchParams;
   const mode =
@@ -32,6 +33,7 @@ export default async function ScanPage({
     return (
       <ScannerScreen
         mode="laptop"
+        role={role}
         operatorName={operatorName}
         queue={all.filter((s) => s.laptopStatus !== "DELIVERED")}
         delivered={all.filter((s) => s.laptopStatus === "DELIVERED")}
@@ -47,6 +49,7 @@ export default async function ScanPage({
   return (
     <ScannerScreen
       mode="casier"
+      role={role}
       operatorName={operatorName}
       queue={all.filter((s) => !s.lockerDeliveredAt)}
       delivered={all.filter((s) => s.lockerDeliveredAt)}
