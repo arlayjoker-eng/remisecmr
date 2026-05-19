@@ -126,7 +126,7 @@ export default function ScannerScreen({
     goTo(s.studentNumber);
   };
 
-  const accent = mode === "casier" ? "#2BB070" : K.violet;
+  const accent = mode === "casier" ? "#2BB070" : "#1E3A5F";
 
   return (
     <div
@@ -134,14 +134,23 @@ export default function ScannerScreen({
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        background: K.bg,
+        background: "#FAFAF9",
         fontFamily: K.body,
-        color: "#fff",
+        color: K.ink,
         position: "relative",
         overflow: "hidden",
       }}
     >
-      <StarField />
+      <style>{`
+        .kiosk-search-input::placeholder { color: #FFEB00; opacity: 0.65; font-weight: 800; }
+        @keyframes mascotGreet {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          18%      { transform: translateY(-7px) rotate(-7deg); }
+          36%      { transform: translateY(0) rotate(6deg); }
+          54%      { transform: translateY(-5px) rotate(-5deg); }
+          72%      { transform: translateY(0) rotate(4deg); }
+        }
+      `}</style>
 
       {/* Top bar */}
       <div
@@ -162,7 +171,7 @@ export default function ScannerScreen({
                 fontFamily: K.display,
                 fontSize: 22,
                 fontWeight: 800,
-                color: "#fff",
+                color: K.ink,
                 letterSpacing: -0.6,
                 lineHeight: 1,
               }}
@@ -172,7 +181,7 @@ export default function ScannerScreen({
             <div
               style={{
                 fontSize: 12,
-                color: "rgba(255,255,255,0.62)",
+                color: K.ink3,
                 fontWeight: 700,
                 marginTop: 4,
               }}
@@ -193,7 +202,7 @@ export default function ScannerScreen({
             style={{
               fontFamily: K.mono,
               fontSize: 12,
-              color: "rgba(255,255,255,0.62)",
+              color: K.ink3,
               fontWeight: 600,
             }}
           >
@@ -209,46 +218,54 @@ export default function ScannerScreen({
         </div>
       </div>
 
-      {/* KPI row */}
+      {/* KPI row — 4 cartes compactes, style unifié corail */}
       <div
         style={{
-          padding: "18px 32px 0",
+          padding: "14px 32px 0",
           display: "grid",
           gridTemplateColumns: "1fr 1fr 1fr 1fr",
-          gap: 14,
+          gap: 12,
           position: "relative",
           zIndex: 2,
         }}
       >
         <KpiCard
-          label={mode === "casier" ? "Casiers à remettre" : "Portables en attente"}
-          value={pendingCount}
+          label={
+            mode === "casier" ? "Casiers à remettre" : "Portables à remettre"
+          }
+          value={String(pendingCount).padStart(2, "0")}
           sub="aujourd'hui"
-          tone="cream"
-          icon={mode === "casier" ? "🔒" : "💻"}
+          icon={
+            mode === "casier"
+              ? Icons.box({ size: 22, stroke: "rgba(255,255,255,0.92)" })
+              : Icons.device({ size: 22, stroke: "rgba(255,255,255,0.92)" })
+          }
         />
         <KpiCard
           label={mode === "casier" ? "Casiers remis" : "Portables remis"}
-          value={doneCount}
+          value={String(doneCount).padStart(2, "0")}
           sub={`${progress}% complété`}
-          tone="green"
-          icon="✅"
+          icon={Icons.check({ size: 22, stroke: "rgba(255,255,255,0.92)" })}
         />
         <KpiCard
           label="Total programmé"
-          value={total}
-          sub="élèves"
-          tone="violet"
-          icon={mode === "casier" ? "🧳" : "🎒"}
+          value={String(total).padStart(2, "0")}
+          sub="élèves programmés"
+          icon={Icons.group({ size: 22, stroke: "rgba(255,255,255,0.92)" })}
         />
-        <ProgressCard value={progress} />
+        <KpiCard
+          label="Avancement"
+          value={`${progress}%`}
+          sub="Bonne route !"
+          icon={<MiniRing value={progress} />}
+        />
       </div>
 
       {/* Body */}
       <div
         style={{
           flex: 1,
-          padding: "18px 32px 22px",
+          padding: "14px 32px 22px",
           display: "flex",
           gap: 16,
           minHeight: 0,
@@ -285,7 +302,7 @@ export default function ScannerScreen({
                   fontFamily: K.display,
                   fontSize: 11,
                   fontWeight: 800,
-                  color: mode === "casier" ? "#2BB070" : K.pink,
+                  color: mode === "casier" ? "#2BB070" : "#1E3A5F",
                   letterSpacing: 1.6,
                   textTransform: "uppercase",
                 }}
@@ -320,7 +337,13 @@ export default function ScannerScreen({
                   : "Pointez la caméra vers le code-barres de la carte de l'élève."}
               </div>
             </div>
-            <div style={{ flexShrink: 0 }}>
+            <div
+              style={{
+                flexShrink: 0,
+                transformOrigin: "bottom center",
+                animation: "mascotGreet 2.6s ease-in-out infinite",
+              }}
+            >
               {mode === "casier" ? (
                 <PadlockMascot size={140} />
               ) : (
@@ -337,7 +360,7 @@ export default function ScannerScreen({
               borderRadius: 24,
               overflow: "hidden",
               background: "linear-gradient(180deg, #2D0F75 0%, #1B0945 100%)",
-              minHeight: 260,
+              minHeight: 340,
             }}
           >
             <div style={{ position: "absolute", inset: 0 }}>
@@ -547,16 +570,17 @@ export default function ScannerScreen({
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
-                  padding: "12px 16px",
+                  padding: "14px 18px",
                   borderRadius: 999,
-                  background: "rgba(255,255,255,0.14)",
-                  backdropFilter: "blur(16px)",
-                  WebkitBackdropFilter: "blur(16px)",
-                  border: "1px solid rgba(255,255,255,0.20)",
+                  background: "#1a1a1a",
+                  border: "1.5px solid rgba(255,235,0,0.55)",
+                  boxShadow:
+                    "0 0 18px rgba(255,235,0,0.35), inset 0 0 6px rgba(255,235,0,0.25)",
                 }}
               >
-                {Icons.search({ size: 18, stroke: "rgba(255,255,255,0.85)" })}
+                {Icons.search({ size: 18, stroke: "#FFEB00" })}
                 <input
+                  className="kiosk-search-input"
                   value={manual}
                   onChange={(e) => setManual(e.target.value)}
                   onKeyDown={(e) => {
@@ -567,10 +591,11 @@ export default function ScannerScreen({
                     background: "transparent",
                     border: "none",
                     outline: "none",
-                    color: "#fff",
+                    color: "#FFEB00",
                     fontSize: 15,
-                    fontWeight: 700,
+                    fontWeight: 800,
                     fontFamily: K.display,
+                    letterSpacing: 0.2,
                     width: "100%",
                   }}
                 />
@@ -580,6 +605,11 @@ export default function ScannerScreen({
                 size="lg"
                 icon={Icons.play({ size: 20, stroke: "#fff" })}
                 onClick={() => resolve(manual)}
+                style={{
+                  background: "#1E3A5F",
+                  boxShadow:
+                    "0 6px 0 #0F2540, 0 14px 28px rgba(30,58,95,0.40)",
+                }}
               >
                 Rechercher
               </Btn>
@@ -766,7 +796,7 @@ export default function ScannerScreen({
 
 const chipBtnStyle: React.CSSProperties = {
   border: "none",
-  background: "rgba(255,255,255,0.10)",
+  background: "#1E3A5F",
   color: "#fff",
   borderRadius: 999,
   padding: "8px 14px",
@@ -837,14 +867,14 @@ function ModeBadge({ mode }: { mode: "laptop" | "casier" }) {
         gap: 8,
         padding: "8px 14px",
         borderRadius: 999,
-        background: "rgba(255,255,255,0.10)",
+        background: "#F1F0EE",
         border: `1px solid ${m.color}55`,
         fontFamily: K.display,
         fontWeight: 800,
         fontSize: 11.5,
         letterSpacing: 0.6,
         textTransform: "uppercase",
-        color: "#fff",
+        color: K.ink,
       }}
     >
       <span
@@ -865,44 +895,37 @@ function KpiCard({
   label,
   value,
   sub,
-  tone,
   icon,
 }: {
   label: string;
-  value: number;
+  value: React.ReactNode;
   sub: string;
-  tone: "cream" | "green" | "violet";
-  icon: string;
+  icon: React.ReactNode;
 }) {
-  const tones: Record<string, { bg: string; ink: string }> = {
-    cream: { bg: K.surfaceWarm, ink: "#8A5A14" },
-    green: { bg: K.greenSoft, ink: "#1F8A47" },
-    violet: { bg: "#fff", ink: K.violetDeep },
-  };
-  const t = tones[tone];
   return (
     <div
       style={{
-        background: t.bg,
-        borderRadius: 24,
-        padding: "18px 20px",
+        background: "linear-gradient(135deg, #FF6B4A 0%, #E63946 100%)",
+        borderRadius: 16,
+        padding: "12px 16px",
+        maxHeight: 90,
         display: "flex",
         alignItems: "center",
-        gap: 14,
-        boxShadow: "0 14px 30px rgba(15,0,60,0.25)",
+        gap: 12,
+        color: "#fff",
+        boxShadow: "0 10px 24px rgba(230,57,70,0.30)",
       }}
     >
       <div
         style={{
-          width: 54,
-          height: 54,
-          borderRadius: 16,
-          background: "#fff",
+          width: 38,
+          height: 38,
+          borderRadius: 11,
+          background: "rgba(255,255,255,0.18)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 28,
-          boxShadow: "0 4px 0 rgba(27,15,69,0.08)",
+          flexShrink: 0,
         }}
       >
         {icon}
@@ -911,12 +934,14 @@ function KpiCard({
         <div
           style={{
             fontFamily: K.display,
-            fontSize: 10.5,
+            fontSize: 10,
             fontWeight: 800,
-            letterSpacing: 1.2,
+            letterSpacing: 1,
             textTransform: "uppercase",
-            color: t.ink,
-            opacity: 0.78,
+            opacity: 0.85,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
           {label}
@@ -924,24 +949,24 @@ function KpiCard({
         <div
           style={{
             fontFamily: K.display,
-            fontSize: 36,
+            fontSize: 24,
             fontWeight: 800,
-            color: t.ink,
-            letterSpacing: -1.5,
-            lineHeight: 1,
-            marginTop: 2,
+            letterSpacing: -0.8,
+            lineHeight: 1.1,
             fontVariantNumeric: "tabular-nums",
           }}
         >
-          {String(value).padStart(2, "0")}
+          {value}
         </div>
         <div
           style={{
-            fontSize: 11.5,
-            color: t.ink,
-            opacity: 0.65,
+            fontSize: 11,
             fontWeight: 700,
-            marginTop: 2,
+            opacity: 0.8,
+            marginTop: 1,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
           {sub}
@@ -951,89 +976,36 @@ function KpiCard({
   );
 }
 
-function ProgressCard({ value }: { value: number }) {
-  const r = 30;
+function MiniRing({ value }: { value: number }) {
+  const r = 13;
   const c = 2 * Math.PI * r;
   return (
-    <div
-      style={{
-        background: "linear-gradient(135deg, #FF3D8B 0%, #FF8C42 100%)",
-        borderRadius: 24,
-        padding: "18px 20px",
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        color: "#fff",
-        boxShadow: "0 14px 30px rgba(255,61,139,0.35)",
-      }}
+    <svg
+      width="34"
+      height="34"
+      viewBox="0 0 34 34"
+      style={{ transform: "rotate(-90deg)" }}
     >
-      <div style={{ position: "relative", width: 72, height: 72 }}>
-        <svg
-          width="72"
-          height="72"
-          viewBox="0 0 72 72"
-          style={{ transform: "rotate(-90deg)" }}
-        >
-          <circle
-            cx="36"
-            cy="36"
-            r={r}
-            stroke="rgba(255,255,255,0.28)"
-            strokeWidth="6"
-            fill="none"
-          />
-          <circle
-            cx="36"
-            cy="36"
-            r={r}
-            stroke="#fff"
-            strokeWidth="6"
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={c}
-            strokeDashoffset={c * (1 - value / 100)}
-          />
-        </svg>
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: K.display,
-            fontSize: 18,
-            fontWeight: 800,
-          }}
-        >
-          {value}%
-        </div>
-      </div>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontFamily: K.display,
-            fontSize: 10.5,
-            fontWeight: 800,
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-            opacity: 0.85,
-          }}
-        >
-          Avancement
-        </div>
-        <div
-          style={{
-            fontFamily: K.display,
-            fontSize: 20,
-            fontWeight: 800,
-            marginTop: 2,
-          }}
-        >
-          Bonne route !
-        </div>
-      </div>
-    </div>
+      <circle
+        cx="17"
+        cy="17"
+        r={r}
+        stroke="rgba(255,255,255,0.32)"
+        strokeWidth="4"
+        fill="none"
+      />
+      <circle
+        cx="17"
+        cy="17"
+        r={r}
+        stroke="#fff"
+        strokeWidth="4"
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - value / 100)}
+      />
+    </svg>
   );
 }
 
