@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { toSchoolEmail } from "@/lib/util";
 import { NextResponse } from "next/server";
 
 const ROLES = ["SUPER_ADMIN", "STAFF_MANAGER", "OPERATOR"];
@@ -41,7 +42,8 @@ export async function POST(req: Request) {
   if (g.error) return g.error;
 
   const body = await req.json().catch(() => null);
-  const email = String(body?.email ?? "").trim().toLowerCase();
+  // Nom d'utilisateur court → courriel complet (domaine ajouté si absent).
+  const email = toSchoolEmail(String(body?.email ?? ""));
   const fullName = String(body?.fullName ?? "").trim();
   const password = String(body?.password ?? "");
   const role = String(body?.role ?? "OPERATOR");
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
 
   if (!email || !fullName) {
     return NextResponse.json(
-      { error: "Courriel et nom requis." },
+      { error: "Identifiant et nom requis." },
       { status: 400 },
     );
   }

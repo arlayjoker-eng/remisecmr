@@ -21,3 +21,15 @@ export function initialsOf(name: string | null | undefined): string {
     .join("")
     .toUpperCase();
 }
+
+// Domaine courriel de l'école. Un identifiant court sans "@" devient
+// identifiant@collegemont-royal.qc.ca — utilisé au login et à la création.
+export const SCHOOL_EMAIL_DOMAIN = "collegemont-royal.qc.ca";
+
+export function toSchoolEmail(raw: string): string {
+  const v = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (!v) return "";
+  return v.includes("@") ? v : `${v}@${SCHOOL_EMAIL_DOMAIN}`;
+}

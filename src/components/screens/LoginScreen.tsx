@@ -185,12 +185,12 @@ export default function LoginScreen() {
           </div>
         </div>
 
-        <Field label="Courriel">
+        <Field label="Identifiant">
           <input
-            type="email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="prenom.nom@collegemont-royal.qc.ca"
+            placeholder="ex. agarcia"
             autoFocus
             autoComplete="username"
             onKeyDown={(e) => {

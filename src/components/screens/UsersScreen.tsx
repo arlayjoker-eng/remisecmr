@@ -456,15 +456,28 @@ function UserForm({
         </div>
 
         <div>
-          <Label>Courriel</Label>
+          <Label>Identifiant</Label>
           <input
-            type="email"
+            type="text"
             value={email}
             disabled={isEdit}
             onChange={(e) => setEmail(e.target.value)}
             style={{ ...inputStyle, opacity: isEdit ? 0.55 : 1 }}
-            placeholder="prenom.nom@collegemont-royal.qc.ca"
+            placeholder="ex. agarcia"
           />
+          {!isEdit && (
+            <div
+              style={{
+                fontSize: 11.5,
+                color: K.ink3,
+                fontWeight: 600,
+                marginTop: 5,
+              }}
+            >
+              Tapez seulement le nom court — @collegemont-royal.qc.ca est
+              ajouté automatiquement.
+            </div>
+          )}
         </div>
 
         <div>

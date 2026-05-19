@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { toSchoolEmail } from "@/lib/util";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -14,7 +15,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       authorize: async (creds) => {
         try {
-          const email = String(creds?.email ?? "").trim().toLowerCase();
+          // Accepte le nom d'utilisateur court OU le courriel complet.
+          const email = toSchoolEmail(String(creds?.email ?? ""));
           const password = String(creds?.password ?? "");
           if (!email || !password) return null;
 
