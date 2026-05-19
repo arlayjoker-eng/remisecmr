@@ -1,7 +1,16 @@
 "use client";
 // Live camera barcode/QR scanner — wraps html5-qrcode, uses the iPad rear camera.
 import React from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+
+// Formats reconnus : codes-barres 1D des carnets élèves (Code 128 prioritaire) + QR.
+const FORMATS = [
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.QR_CODE,
+];
 
 type Props = {
   onDetected: (value: string) => void;
@@ -20,7 +29,10 @@ export default function BarcodeScanner({ onDetected, onError }: Props) {
   React.useEffect(() => {
     let cancelled = false;
     let started = false;
-    const scanner = new Html5Qrcode(READER_ID, { verbose: false });
+    const scanner = new Html5Qrcode(READER_ID, {
+      verbose: false,
+      formatsToSupport: FORMATS,
+    });
 
     const stopSafely = () => {
       try {
@@ -38,7 +50,15 @@ export default function BarcodeScanner({ onDetected, onError }: Props) {
     scanner
       .start(
         { facingMode: "environment" },
-        { fps: 12, aspectRatio: 1.35 },
+        {
+          fps: 10,
+          aspectRatio: 1.5,
+          // Zone rectangulaire — large et basse pour bien capter les codes 1D.
+          qrbox: (vw: number, vh: number) => ({
+            width: Math.round(Math.min(350, vw * 0.9)),
+            height: Math.round(Math.min(150, vh * 0.6)),
+          }),
+        },
         (decodedText) => {
           const now = Date.now();
           if (now - lastHit.current < 2500) return; // debounce same card

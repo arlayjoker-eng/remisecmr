@@ -16,6 +16,15 @@ type Props = {
   role: string;
 };
 
+type SearchHit = {
+  id: string;
+  studentNumber: string;
+  firstName: string;
+  lastName: string;
+  group: string;
+  level: string;
+};
+
 export default function ScannerScreen({
   queue,
   delivered,
@@ -30,6 +39,8 @@ export default function ScannerScreen({
   const [scanError, setScanError] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [now, setNow] = React.useState("");
+  const [results, setResults] = React.useState<SearchHit[]>([]);
+  const [searching, setSearching] = React.useState(false);
 
   const pendingCount = queue.length;
   const doneCount = delivered.length;
@@ -54,6 +65,30 @@ export default function ScannerScreen({
     const t = setInterval(tick, 30000);
     return () => clearInterval(t);
   }, []);
+
+  // Recherche par nom/numéro — debounce 300 ms vers /api/students/search.
+  React.useEffect(() => {
+    const q = manual.trim();
+    if (q.length < 2) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(
+          `/api/students/search?q=${encodeURIComponent(q)}`,
+        );
+        setResults(r.ok ? ((await r.json()) as SearchHit[]) : []);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [manual]);
 
   const goTo = (studentNumber: string) => {
     router.push(
@@ -381,6 +416,117 @@ export default function ScannerScreen({
                 }}
               >
                 {scanError}
+              </div>
+            )}
+
+            {(results.length > 0 || (searching && manual.trim().length >= 2)) && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 18,
+                  right: 18,
+                  bottom: 82,
+                  maxHeight: 240,
+                  overflowY: "auto",
+                  borderRadius: 18,
+                  background: "rgba(20,8,52,0.92)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  boxShadow: "0 18px 44px rgba(0,0,0,0.5)",
+                  padding: 6,
+                  zIndex: 5,
+                }}
+              >
+                {searching && results.length === 0 && (
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Recherche…
+                  </div>
+                )}
+                {!searching && results.length === 0 && (
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Aucun élève trouvé.
+                  </div>
+                )}
+                {results.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setManual("");
+                      setResults([]);
+                      goTo(s.studentNumber);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      border: "none",
+                      background: "transparent",
+                      color: "#fff",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background =
+                        "rgba(255,255,255,0.10)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontFamily: K.display,
+                          fontSize: 15,
+                          fontWeight: 800,
+                          letterSpacing: -0.3,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {s.firstName} {s.lastName}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11.5,
+                          color: "rgba(255,255,255,0.6)",
+                          fontWeight: 700,
+                          marginTop: 2,
+                          display: "flex",
+                          gap: 8,
+                        }}
+                      >
+                        <span>{s.group}</span>
+                        <span style={{ opacity: 0.5 }}>·</span>
+                        <span style={{ fontFamily: K.mono }}>
+                          {s.studentNumber}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ color: "rgba(255,255,255,0.5)" }}>
+                      {Icons.chev({ size: 18 })}
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
 
