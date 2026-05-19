@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { toClientStudent } from "@/lib/mappers";
 import { K } from "@/lib/k";
 import ScannerScreen from "@/components/screens/ScannerScreen";
+import RoleNav from "@/components/RoleNav";
+import LogoutButton from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,7 @@ export default async function ScanPage({
   const mode =
     modeParam === "laptop" || modeParam === "casier" ? modeParam : null;
 
-  if (!mode) return <ModeSelect />;
+  if (!mode) return <ModeSelect role={role} />;
 
   if (mode === "laptop") {
     const students = await prisma.student.findMany({
@@ -57,7 +59,7 @@ export default async function ScanPage({
   );
 }
 
-function ModeSelect() {
+function ModeSelect({ role }: { role: string }) {
   const cards = [
     {
       href: "/scan?mode=laptop",
@@ -83,13 +85,59 @@ function ModeSelect() {
         fontFamily: K.body,
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 30,
-        padding: 40,
       }}
     >
-      <div style={{ textAlign: "center" }}>
+      {/* Cabecera avec navigation par rôle */}
+      <div
+        style={{
+          padding: "22px 32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontFamily: K.display,
+              fontSize: 11,
+              fontWeight: 800,
+              color: "#B589F0",
+              letterSpacing: 1.6,
+              textTransform: "uppercase",
+            }}
+          >
+            ● RemiseCMR
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "rgba(255,255,255,0.62)",
+              fontWeight: 700,
+              marginTop: 4,
+            }}
+          >
+            Collège Mont-Royal · Campus principal
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <RoleNav role={role} />
+          <LogoutButton />
+        </div>
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 30,
+          padding: 40,
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
         <div
           style={{
             fontFamily: K.display,
@@ -148,6 +196,7 @@ function ModeSelect() {
             </div>
           </Link>
         ))}
+        </div>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import { K } from "@/lib/k";
 function chipStyle(active: boolean): React.CSSProperties {
   return {
     border: "none",
-    background: active ? "#fff" : "rgba(255,255,255,0.10)",
+    background: active ? "#fff" : "#1E3A5F",
     color: active ? K.violetDeep : "#fff",
     borderRadius: 999,
     padding: "8px 14px",

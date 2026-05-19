@@ -155,7 +155,7 @@ export default function ScannerScreen({
       {/* Top bar */}
       <div
         style={{
-          padding: "22px 32px 0",
+          padding: "12px 32px 0",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -163,16 +163,16 @@ export default function ScannerScreen({
           zIndex: 2,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
           <Logo />
           <div>
             <div
               style={{
                 fontFamily: K.display,
-                fontSize: 22,
+                fontSize: 17,
                 fontWeight: 800,
                 color: K.ink,
-                letterSpacing: -0.6,
+                letterSpacing: -0.5,
                 lineHeight: 1,
               }}
             >
@@ -180,7 +180,7 @@ export default function ScannerScreen({
             </div>
             <div
               style={{
-                fontSize: 12,
+                fontSize: 10.5,
                 color: K.ink3,
                 fontWeight: 700,
                 marginTop: 4,
@@ -313,22 +313,22 @@ export default function ScannerScreen({
               <div
                 style={{
                   fontFamily: K.display,
-                  fontSize: 38,
+                  fontSize: 26,
                   fontWeight: 800,
                   color: K.ink,
-                  letterSpacing: -1.2,
+                  letterSpacing: -0.8,
                   lineHeight: 1,
-                  marginTop: 6,
+                  marginTop: 5,
                 }}
               >
                 Scannez le <span style={{ color: accent }}>code élève</span>
               </div>
               <div
                 style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   color: K.ink3,
                   fontWeight: 600,
-                  marginTop: 8,
+                  marginTop: 6,
                   maxWidth: 460,
                 }}
               >
@@ -345,9 +345,9 @@ export default function ScannerScreen({
               }}
             >
               {mode === "casier" ? (
-                <PadlockMascot size={140} />
+                <PadlockMascot size={92} />
               ) : (
-                <LaptopMascot size={130} />
+                <LaptopMascot size={86} />
               )}
             </div>
           </div>
@@ -375,38 +375,6 @@ export default function ScannerScreen({
                   onError={(m) => setCamError(m)}
                 />
               )}
-            </div>
-
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%,-50%)",
-                width: 300,
-                height: 300,
-                borderRadius: 28,
-                border: "3px dashed rgba(255,255,255,0.35)",
-                pointerEvents: "none",
-              }}
-            >
-              <Corner pos="tl" />
-              <Corner pos="tr" />
-              <Corner pos="bl" />
-              <Corner pos="br" />
-              <div
-                style={{
-                  position: "absolute",
-                  left: 14,
-                  right: 14,
-                  height: 3,
-                  borderRadius: 2,
-                  background:
-                    "linear-gradient(90deg, transparent, #FFD23F, transparent)",
-                  boxShadow: "0 0 18px rgba(255,210,63,0.85)",
-                  animation: "scanline 1.6s ease-in-out infinite",
-                }}
-              />
             </div>
 
             <div style={statusBubbleStyle}>
@@ -602,13 +570,14 @@ export default function ScannerScreen({
               </div>
               <Btn
                 kind="cta"
-                size="lg"
-                icon={Icons.play({ size: 20, stroke: "#fff" })}
+                size="md"
+                icon={Icons.play({ size: 16, stroke: "#fff" })}
                 onClick={() => resolve(manual)}
                 style={{
-                  background: "#1E3A5F",
+                  background:
+                    "linear-gradient(135deg, #FF6B4A 0%, #E63946 100%)",
                   boxShadow:
-                    "0 6px 0 #0F2540, 0 14px 28px rgba(30,58,95,0.40)",
+                    "0 5px 0 #B5232E, 0 12px 24px rgba(230,57,70,0.38)",
                 }}
               >
                 Rechercher
@@ -833,15 +802,15 @@ function Logo() {
   return (
     <div
       style={{
-        width: 56,
-        height: 56,
-        borderRadius: 14,
+        width: 42,
+        height: 42,
+        borderRadius: 11,
         background: "#fff",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 6,
-        boxShadow: "0 6px 0 rgba(15,25,75,0.45), 0 14px 24px rgba(15,25,75,0.30)",
+        padding: 5,
+        boxShadow: "0 4px 0 rgba(15,25,75,0.40), 0 10px 18px rgba(15,25,75,0.25)",
       }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1006,29 +975,6 @@ function MiniRing({ value }: { value: number }) {
         strokeDashoffset={c * (1 - value / 100)}
       />
     </svg>
-  );
-}
-
-function Corner({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
-  const m: Record<string, React.CSSProperties> = {
-    tl: { top: -3, left: -3, borderTopWidth: 5, borderLeftWidth: 5 },
-    tr: { top: -3, right: -3, borderTopWidth: 5, borderRightWidth: 5 },
-    bl: { bottom: -3, left: -3, borderBottomWidth: 5, borderLeftWidth: 5 },
-    br: { bottom: -3, right: -3, borderBottomWidth: 5, borderRightWidth: 5 },
-  };
-  return (
-    <div
-      style={{
-        position: "absolute",
-        width: 44,
-        height: 44,
-        borderRadius: 8,
-        borderColor: "#FFD23F",
-        borderStyle: "solid",
-        borderWidth: 0,
-        ...m[pos],
-      }}
-    />
   );
 }
 
