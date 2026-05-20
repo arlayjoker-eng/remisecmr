@@ -14,8 +14,13 @@ export async function GET(req: Request) {
   }
 
   const sp = new URL(req.url).searchParams;
+  const typeFilter = sp.get("type") || "";
+  // Si on filtre par type → on ne produit que la feuille correspondante.
+  const includeLaptops = !typeFilter || typeFilter === "LAPTOP";
+  const includeCasiers = !typeFilter || typeFilter === "CASIER";
+
   const { rows } = await getReportData({
-    type: sp.get("type") || "",
+    type: typeFilter,
     level: sp.get("level") || "",
     group: sp.get("group") || "",
     state: sp.get("state") || "",
@@ -36,77 +41,89 @@ export async function GET(req: Request) {
     },
   };
 
+  const sheets: ExcelJS.Worksheet[] = [];
+
   // ─── Feuille Portables ──────────────────────────────────────
-  const wsP = wb.addWorksheet("Portables");
-  wsP.columns = [
-    { header: "N° élève", key: "n", width: 14 },
-    { header: "Nom", key: "nom", width: 18 },
-    { header: "Prénom", key: "prenom", width: 18 },
-    { header: "Courriel", key: "email", width: 32 },
-    { header: "Groupe", key: "groupe", width: 12 },
-    { header: "Niveau", key: "niveau", width: 10 },
-    { header: "Modèle", key: "modele", width: 32 },
-    { header: "Série", key: "serie", width: 18 },
-    { header: "Boîte", key: "boite", width: 12 },
-    { header: "État", key: "etat", width: 14 },
-    { header: "Date livraison", key: "date", width: 20 },
-    { header: "Opérateur", key: "operateur", width: 22 },
-  ];
-  rows
-    .filter((r) => r.typeKey === "LAPTOP")
-    .forEach((r) =>
-      wsP.addRow({
-        n: r.studentNumber,
-        nom: r.lastName,
-        prenom: r.firstName,
-        email: r.email,
-        groupe: r.group,
-        niveau: `Sec ${r.level}`,
-        modele: r.laptopModel,
-        serie: r.laptopSerial,
-        boite: r.boxNumber,
-        etat: r.state,
-        date: fmtDeliveryDate(r.deliveryDate),
-        operateur: r.operator,
-      }),
-    );
+  if (includeLaptops) {
+    const wsP = wb.addWorksheet("Portables");
+    wsP.columns = [
+      { header: "N° élève", key: "n", width: 14 },
+      { header: "Nom", key: "nom", width: 18 },
+      { header: "Prénom", key: "prenom", width: 18 },
+      { header: "Courriel", key: "email", width: 32 },
+      { header: "Groupe", key: "groupe", width: 12 },
+      { header: "Niveau", key: "niveau", width: 10 },
+      { header: "Modèle", key: "modele", width: 32 },
+      { header: "Série", key: "serie", width: 18 },
+      { header: "Boîte", key: "boite", width: 12 },
+      { header: "État", key: "etat", width: 14 },
+      { header: "Date livraison", key: "date", width: 20 },
+      { header: "Opérateur", key: "operateur", width: 22 },
+    ];
+    rows
+      .filter((r) => r.typeKey === "LAPTOP")
+      .forEach((r) =>
+        wsP.addRow({
+          n: r.studentNumber,
+          nom: r.lastName,
+          prenom: r.firstName,
+          email: r.email,
+          groupe: r.group,
+          niveau: `Sec ${r.level}`,
+          modele: r.laptopModel,
+          serie: r.laptopSerial,
+          boite: r.boxNumber,
+          etat: r.state,
+          date: fmtDeliveryDate(r.deliveryDate),
+          operateur: r.operator,
+        }),
+      );
+    sheets.push(wsP);
+  }
 
   // ─── Feuille Casiers ────────────────────────────────────────
-  const wsC = wb.addWorksheet("Casiers");
-  wsC.columns = [
-    { header: "N° élève", key: "n", width: 14 },
-    { header: "Nom", key: "nom", width: 18 },
-    { header: "Prénom", key: "prenom", width: 18 },
-    { header: "Groupe", key: "groupe", width: 12 },
-    { header: "Niveau", key: "niveau", width: 10 },
-    { header: "Casier", key: "casier", width: 14 },
-    { header: "Code", key: "code", width: 14 },
-    { header: "Binôme N°", key: "binomeN", width: 14 },
-    { header: "Binôme Nom", key: "binomeNom", width: 24 },
-    { header: "État", key: "etat", width: 14 },
-    { header: "Date livraison", key: "date", width: 20 },
-    { header: "Opérateur", key: "operateur", width: 22 },
-  ];
-  rows
-    .filter((r) => r.typeKey === "CASIER")
-    .forEach((r) =>
-      wsC.addRow({
-        n: r.studentNumber,
-        nom: r.lastName,
-        prenom: r.firstName,
-        groupe: r.group,
-        niveau: `Sec ${r.level}`,
-        casier: r.lockerNumber,
-        code: r.combinationCode,
-        binomeN: r.binomeNumber,
-        binomeNom: r.binomeName,
-        etat: r.state,
-        date: fmtDeliveryDate(r.deliveryDate),
-        operateur: r.operator,
-      }),
-    );
+  // Colonnes : élève · niveau · groupe · casier scanné · binôme (paire) ·
+  // « Petit casier » (laissé vide, à remplir manuellement après export).
+  if (includeCasiers) {
+    const wsC = wb.addWorksheet("Casiers");
+    wsC.columns = [
+      { header: "N° élève", key: "n", width: 14 },
+      { header: "Nom", key: "nom", width: 18 },
+      { header: "Prénom", key: "prenom", width: 18 },
+      { header: "Niveau", key: "niveau", width: 10 },
+      { header: "Groupe", key: "groupe", width: 12 },
+      { header: "Casier", key: "casier", width: 14 },
+      { header: "Code", key: "code", width: 14 },
+      { header: "Binôme N°", key: "binomeN", width: 14 },
+      { header: "Binôme Nom", key: "binomeNom", width: 24 },
+      { header: "Petit casier", key: "petitCasier", width: 14 },
+      { header: "État", key: "etat", width: 14 },
+      { header: "Date livraison", key: "date", width: 20 },
+      { header: "Opérateur", key: "operateur", width: 22 },
+    ];
+    rows
+      .filter((r) => r.typeKey === "CASIER")
+      .forEach((r) =>
+        wsC.addRow({
+          n: r.studentNumber,
+          nom: r.lastName,
+          prenom: r.firstName,
+          niveau: `Sec ${r.level}`,
+          groupe: r.group,
+          casier: r.lockerNumber,
+          code: r.combinationCode,
+          binomeN: r.binomeNumber,
+          binomeNom: r.binomeName,
+          petitCasier: "", // saisie manuelle après export
+          etat: r.state,
+          date: fmtDeliveryDate(r.deliveryDate),
+          operateur: r.operator,
+        }),
+      );
+    sheets.push(wsC);
+  }
 
-  for (const ws of [wsP, wsC]) {
+  for (const ws of sheets) {
     const header = ws.getRow(1);
     header.eachCell((cell) => {
       cell.font = headerStyle.font;
