@@ -1,9 +1,9 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { parseImport } from "@/lib/import-parse";
 import { NextResponse } from "next/server";
-import Papa from "papaparse";
 
-// POST — import students.csv (PORTABLE list). SUPER_ADMIN only.
+// POST — import liste PORTABLE (CSV ou Excel .xlsx). SUPER_ADMIN only.
 // Columns: student_number,first_name,last_name,email,group,box_number,laptop_serial,laptop_model
 // Le niveau (Sec 1-5) vient du sélecteur, passé en ?level=1..5.
 // Atomic: si una sola línea tiene error, no se importa nada.
@@ -29,20 +29,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const csv = await req.text();
-  if (!csv.trim()) {
+  const rows = await parseImport(req);
+  if (rows.length === 0) {
     return NextResponse.json(
-      { ok: false, total: 0, imported: 0, errors: ["Fichier vide."] },
+      {
+        ok: false,
+        total: 0,
+        imported: 0,
+        errors: ["Fichier vide ou sans données."],
+      },
       { status: 422 },
     );
   }
-
-  const parsed = Papa.parse<Record<string, string>>(csv, {
-    header: true,
-    skipEmptyLines: true,
-    transformHeader: (h) => h.trim().toLowerCase().replace(/^﻿/, ""),
-  });
-  const rows = parsed.data;
   const errors: string[] = [];
   const valid: {
     studentNumber: string;

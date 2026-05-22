@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { parseImport } from "@/lib/import-parse";
 import { NextResponse } from "next/server";
-import Papa from "papaparse";
 
 // POST — import de la liste des élèves recevant un CASIER. SUPER_ADMIN only.
 // Columns: student_number,first_name,last_name,group
@@ -30,20 +30,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const csv = await req.text();
-  if (!csv.trim()) {
+  const rows = await parseImport(req);
+  if (rows.length === 0) {
     return NextResponse.json(
-      { ok: false, total: 0, imported: 0, errors: ["Fichier vide."] },
+      {
+        ok: false,
+        total: 0,
+        imported: 0,
+        errors: ["Fichier vide ou sans données."],
+      },
       { status: 422 },
     );
   }
-
-  const parsed = Papa.parse<Record<string, string>>(csv, {
-    header: true,
-    skipEmptyLines: true,
-    transformHeader: (h) => h.trim().toLowerCase().replace(/^﻿/, ""),
-  });
-  const rows = parsed.data;
   const errors: string[] = [];
   const valid: {
     studentNumber: string;

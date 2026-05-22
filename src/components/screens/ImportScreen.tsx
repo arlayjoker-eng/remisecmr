@@ -121,11 +121,12 @@ export default function ImportScreen() {
             lineHeight: 1.6,
           }}
         >
-          Listes d&apos;élèves : sélectionnez le niveau (Sec 1 à 5) avant
-          d&apos;importer — il s&apos;applique à toutes les lignes du fichier.
-          Catalogue des casiers : crée les casiers disponibles ; l&apos;opérateur
-          en choisit un au scan. Import atomique : une seule erreur annule tout.
-          Ré-importer met à jour sans créer de doublons.
+          Formats acceptés : CSV ou Excel (.xlsx) — la 1ʳᵉ ligne doit être
+          les en-têtes. Listes d&apos;élèves : sélectionnez le niveau (Sec 1 à
+          5) avant d&apos;importer — il s&apos;applique à toutes les lignes du
+          fichier. Catalogue des casiers : crée les casiers disponibles ;
+          l&apos;opérateur en choisit un au scan. Import atomique : une seule
+          erreur annule tout. Ré-importer met à jour sans créer de doublons.
         </div>
       </div>
     </div>
@@ -152,25 +153,31 @@ function UploadSection({
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<Result>(null);
+  const [file, setFile] = React.useState<File | null>(null);
   const [fileName, setFileName] = React.useState("");
   const [level, setLevel] = React.useState("");
 
-  const upload = async (file: File | undefined) => {
-    if (!file) return;
+  // Étape 1 — choisir le fichier (ne l'importe PAS encore).
+  const pickFile = (f: File | undefined) => {
+    setResult(null);
+    setFile(f ?? null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  // Étape 2 — enregistrer : envoie le fichier choisi au serveur.
+  const save = async () => {
+    if (!file || busy) return;
     setBusy(true);
     setResult(null);
     setFileName(file.name);
     try {
-      const text = await file.text();
       const url =
         needsLevel && level ? `${endpoint}?level=${level}` : endpoint;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "text/csv;charset=utf-8" },
-        body: text,
-      });
-      const j = await res.json();
-      setResult(j as Result);
+      // On envoie le fichier brut — le serveur détecte CSV ou Excel.
+      const res = await fetch(url, { method: "POST", body: file });
+      const j = (await res.json()) as Result;
+      setResult(j);
+      if (j && j.ok) setFile(null); // succès → on vide le fichier en attente
     } catch (e) {
       setResult({
         ok: false,
@@ -180,7 +187,6 @@ function UploadSection({
       });
     } finally {
       setBusy(false);
-      if (inputRef.current) inputRef.current.value = "";
     }
   };
 
@@ -272,9 +278,9 @@ function UploadSection({
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,text/csv"
+        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         style={{ display: "none" }}
-        onChange={(e) => upload(e.target.files?.[0])}
+        onChange={(e) => pickFile(e.target.files?.[0])}
       />
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -294,20 +300,69 @@ function UploadSection({
           onClick={() => inputRef.current?.click()}
           style={{ background: blocked ? undefined : accent }}
         >
-          {busy
-            ? "Import en cours…"
-            : blocked
-              ? "Choisissez d'abord le niveau"
-              : needsLevel
-                ? `Choisir le fichier CSV (Sec ${level})`
-                : "Choisir un fichier CSV"}
+          {blocked
+            ? "Choisissez d'abord le niveau"
+            : file
+              ? "Changer de fichier"
+              : "1. Choisir un fichier CSV / Excel"}
         </Btn>
-        {result && (
-          <Btn kind="ghost" size="md" onClick={() => setResult(null)}>
-            Effacer
-          </Btn>
-        )}
       </div>
+
+      {/* Étape 2 — fichier en attente + bouton Enregistrer */}
+      {file && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+            background: K.surfaceWarm,
+            border: `2px solid ${K.lineStrong}`,
+            borderRadius: 14,
+            padding: "12px 14px",
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              minWidth: 180,
+              fontFamily: K.display,
+              fontWeight: 700,
+              fontSize: 14,
+              color: K.ink,
+            }}
+          >
+            📄 {file.name}
+            <span
+              style={{ color: K.ink3, fontWeight: 600, marginLeft: 6 }}
+            >
+              — prêt à enregistrer
+            </span>
+          </div>
+          <Btn
+            kind="success"
+            size="md"
+            disabled={busy}
+            icon={Icons.check({ size: 18, stroke: "#fff" })}
+            onClick={save}
+          >
+            {busy ? "Enregistrement…" : "2. Enregistrer la liste"}
+          </Btn>
+          {!busy && (
+            <Btn kind="ghost" size="md" onClick={() => setFile(null)}>
+              Retirer
+            </Btn>
+          )}
+        </div>
+      )}
+
+      {result && (
+        <div style={{ display: "flex" }}>
+          <Btn kind="ghost" size="md" onClick={() => setResult(null)}>
+            Effacer le résultat
+          </Btn>
+        </div>
+      )}
 
       {result && (
         <div
