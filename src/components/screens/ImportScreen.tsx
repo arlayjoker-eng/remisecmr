@@ -28,7 +28,20 @@ function downloadTemplate(filename: string, headers: string) {
   URL.revokeObjectURL(url);
 }
 
-export default function ImportScreen() {
+type ImportSummary = {
+  laptopByLevel: Record<string, number>;
+  casierByLevel: Record<string, number>;
+  laptopTotal: number;
+  casierTotal: number;
+  lockerTotal: number;
+  lockerAvailable: number;
+};
+
+export default function ImportScreen({
+  summary,
+}: {
+  summary: ImportSummary;
+}) {
   const router = useRouter();
 
   return (
@@ -82,8 +95,68 @@ export default function ImportScreen() {
             icon={Icons.back({ size: 20, stroke: "#fff" })}
             onClick={() => router.push("/admin")}
           >
-            Annuler
+            Retour
           </Btn>
+        </div>
+
+        {/* État actuel — ce qui est déjà chargé dans la base */}
+        <div
+          style={{
+            background: "#fff",
+            color: K.ink,
+            borderRadius: 20,
+            padding: 18,
+            marginBottom: 18,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: K.display,
+              fontSize: 11,
+              fontWeight: 800,
+              color: K.ink3,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              marginBottom: 4,
+            }}
+          >
+            État actuel des listes
+          </div>
+          <SummaryRow
+            label="Portables"
+            color={K.violet}
+            total={summary.laptopTotal}
+            byLevel={summary.laptopByLevel}
+          />
+          <SummaryRow
+            label="Casiers"
+            color={K.teal}
+            total={summary.casierTotal}
+            byLevel={summary.casierByLevel}
+          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "10px 0 2px",
+              borderTop: `1px solid ${K.line}`,
+            }}
+          >
+            <span style={summaryChip(K.orange)}>Catalogue</span>
+            <span
+              style={{
+                fontFamily: K.display,
+                fontWeight: 800,
+                fontSize: 16,
+              }}
+            >
+              {summary.lockerTotal}
+            </span>
+            <span style={{ fontSize: 12, color: K.ink3, fontWeight: 600 }}>
+              casiers · {summary.lockerAvailable} disponibles
+            </span>
+          </div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -133,6 +206,59 @@ export default function ImportScreen() {
   );
 }
 
+function summaryChip(color: string): React.CSSProperties {
+  return {
+    background: color,
+    color: "#fff",
+    borderRadius: 999,
+    padding: "4px 12px",
+    fontFamily: K.display,
+    fontWeight: 800,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  };
+}
+
+function SummaryRow({
+  label,
+  color,
+  total,
+  byLevel,
+}: {
+  label: string;
+  color: string;
+  total: number;
+  byLevel: Record<string, number>;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "10px 0",
+        borderTop: `1px solid ${K.line}`,
+        flexWrap: "wrap",
+      }}
+    >
+      <span style={summaryChip(color)}>{label}</span>
+      <span style={{ fontFamily: K.display, fontWeight: 800, fontSize: 16 }}>
+        {total}
+      </span>
+      <span style={{ fontSize: 12, color: K.ink3, fontWeight: 600 }}>
+        élèves
+      </span>
+      <div style={{ flex: 1 }} />
+      <span style={{ fontFamily: K.mono, fontSize: 12, color: K.ink3 }}>
+        {["1", "2", "3", "4", "5"]
+          .map((l) => `Sec ${l}·${byLevel[l] || 0}`)
+          .join("   ")}
+      </span>
+    </div>
+  );
+}
+
 const LEVELS = ["1", "2", "3", "4", "5"];
 
 function UploadSection({
@@ -150,6 +276,7 @@ function UploadSection({
   accent: string;
   needsLevel?: boolean;
 }) {
+  const router = useRouter();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<Result>(null);
@@ -177,7 +304,10 @@ function UploadSection({
       const res = await fetch(url, { method: "POST", body: file });
       const j = (await res.json()) as Result;
       setResult(j);
-      if (j && j.ok) setFile(null); // succès → on vide le fichier en attente
+      if (j && j.ok) {
+        setFile(null); // succès → on vide le fichier en attente
+        router.refresh(); // met à jour le panneau « État actuel »
+      }
     } catch (e) {
       setResult({
         ok: false,
@@ -357,10 +487,20 @@ function UploadSection({
       )}
 
       {result && (
-        <div style={{ display: "flex" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Btn kind="ghost" size="md" onClick={() => setResult(null)}>
             Effacer le résultat
           </Btn>
+          {result.ok && (
+            <Btn
+              kind="primary"
+              size="md"
+              icon={Icons.back({ size: 18, stroke: "#fff" })}
+              onClick={() => router.push("/admin")}
+            >
+              {"Retour à l'accueil"}
+            </Btn>
+          )}
         </div>
       )}
 
