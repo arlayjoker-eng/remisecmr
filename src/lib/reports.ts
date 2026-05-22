@@ -25,6 +25,7 @@ export type ReportRow = {
   combinationCode: string;
   binomeNumber: string;
   binomeName: string;
+  petitCasier: string;
   details: string;
   stateKey: "DELIVERED" | "PENDING";
   state: string;
@@ -47,15 +48,55 @@ export function fmtDeliveryDate(d: Date | null): string {
   return fmt(d);
 }
 
+// Accès aux rapports par utilisateur. Le SUPER_ADMIN voit tout.
+export async function getReportAccess(
+  userId: string | undefined,
+  role: string | undefined,
+): Promise<{ laptop: boolean; casier: boolean }> {
+  if (role === "SUPER_ADMIN") return { laptop: true, casier: true };
+  if (!userId) return { laptop: false, casier: false };
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { accessLaptopReports: true, accessCasierReports: true },
+  });
+  return {
+    laptop: !!u?.accessLaptopReports,
+    casier: !!u?.accessCasierReports,
+  };
+}
+
+// Restreint le type demandé à ce que l'utilisateur peut voir.
+export function clampReportType(
+  requested: string,
+  access: { laptop: boolean; casier: boolean },
+): string {
+  if (access.laptop && access.casier) {
+    return requested === "LAPTOP" || requested === "CASIER" ? requested : "";
+  }
+  if (access.laptop) return "LAPTOP";
+  if (access.casier) return "CASIER";
+  return "NONE"; // aucun accès → aucun résultat
+}
+
+export type LevelProgress = {
+  level: string;
+  laptopTotal: number;
+  laptopDone: number;
+  casierTotal: number;
+  casierDone: number;
+};
+
 export async function getReportData(filters: ReportFilters): Promise<{
   rows: ReportRow[];
   stats: { total: number; delivered: number; pending: number };
   groups: string[];
+  byLevel: LevelProgress[];
 }> {
   const students = await prisma.student.findMany({
     include: {
       deliveries: { include: { operator: true } },
       lockerAsA: { include: { studentB: true } },
+      lockerAsB: { include: { studentA: true } },
     },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
   });
@@ -86,6 +127,7 @@ export async function getReportData(filters: ReportFilters): Promise<{
         combinationCode: "",
         binomeNumber: "",
         binomeName: "",
+        petitCasier: "",
         details: s.laptopModel || s.laptopSerial || "—",
         stateKey: s.laptopStatus === "DELIVERED" ? "DELIVERED" : "PENDING",
         state: s.laptopStatus === "DELIVERED" ? "Livré" : "En attente",
@@ -96,8 +138,13 @@ export async function getReportData(filters: ReportFilters): Promise<{
     // ─── ligne CASIER ────────────────────────────────────────
     if (s.receivesLocker) {
       const d = s.deliveries.find((x) => x.type === "CASIER") || null;
-      const locker = s.lockerAsA;
-      const b = locker?.studentB || null;
+      const locker = s.lockerAsA ?? s.lockerAsB;
+      // binôme = l'autre élève du casier (selon que cet élève est A ou B)
+      const b = s.lockerAsA
+        ? s.lockerAsA.studentB
+        : s.lockerAsB
+          ? s.lockerAsB.studentA
+          : null;
       all.push({
         typeKey: "CASIER",
         type: "Casier",
@@ -115,6 +162,7 @@ export async function getReportData(filters: ReportFilters): Promise<{
           locker?.combinationCode || s.assignedCombinationCode || "",
         binomeNumber: b?.studentNumber || "",
         binomeName: b ? `${b.firstName} ${b.lastName}` : "",
+        petitCasier: s.petitCasier || "",
         details: locker
           ? `${locker.number} · ${locker.combinationCode}`
           : s.assignedLockerNumber || "—",
@@ -145,6 +193,20 @@ export async function getReportData(filters: ReportFilters): Promise<{
   });
 
   const delivered = rows.filter((r) => r.stateKey === "DELIVERED").length;
+
+  // Progression par niveau — calculée sur l'ensemble (hors filtres).
+  const byLevel: LevelProgress[] = ["1", "2", "3", "4", "5"].map((lvl) => {
+    const lap = all.filter((r) => r.typeKey === "LAPTOP" && r.level === lvl);
+    const cas = all.filter((r) => r.typeKey === "CASIER" && r.level === lvl);
+    return {
+      level: lvl,
+      laptopTotal: lap.length,
+      laptopDone: lap.filter((r) => r.stateKey === "DELIVERED").length,
+      casierTotal: cas.length,
+      casierDone: cas.filter((r) => r.stateKey === "DELIVERED").length,
+    };
+  });
+
   return {
     rows,
     stats: {
@@ -153,5 +215,6 @@ export async function getReportData(filters: ReportFilters): Promise<{
       pending: rows.length - delivered,
     },
     groups,
+    byLevel,
   };
 }

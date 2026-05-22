@@ -30,15 +30,17 @@ enum DeliveryType {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String
-  fullName     String
-  role         Role       @default(OPERATOR)
-  active       Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  deliveries   Delivery[]
+  id                  String     @id @default(cuid())
+  email               String     @unique
+  passwordHash        String
+  fullName            String
+  role                Role       @default(OPERATOR)
+  active              Boolean    @default(true)
+  accessLaptopReports Boolean    @default(false) // rapports Portables
+  accessCasierReports Boolean    @default(true) // rapports Casiers
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  deliveries          Delivery[]
 }
 
 model Student {
@@ -57,6 +59,7 @@ model Student {
   receivesLocker          Boolean      @default(false)
   assignedLockerNumber    String? // casier de A (du CSV)
   assignedCombinationCode String?
+  petitCasier             String? // saisie manuelle depuis /reports
   lockerDeliveredAt       DateTime?
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
@@ -68,6 +71,7 @@ model Student {
 model Locker {
   id                     String       @id @default(cuid())
   number                 String       @unique
+  serialNumber           String? // n° de série du cadenas/loker
   combinationCode        String
   assignedStudentNumberA String?      @unique // alumno A (du CSV)
   studentA               Student?     @relation("LockerOfA", fields: [assignedStudentNumberA], references: [studentNumber])
@@ -77,6 +81,16 @@ model Locker {
   delivery               Delivery?
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
+}
+
+model AuditLog {
+  id       String   @id @default(cuid())
+  at       DateTime @default(now())
+  userId   String
+  userName String
+  action   String // ex. "casier.edit", "casier.remise"
+  target   String // ex. n° d'élève ou n° de casier
+  details  String // résumé lisible du changement
 }
 
 model Delivery {

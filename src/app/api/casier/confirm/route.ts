@@ -1,11 +1,13 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
 
-// POST — confirmer la remise d'un casier (pas de signature, pas de PDF).
-// body: { studentNumber, binomeStudentNumber? }
-//   - binomeStudentNumber présent  → définit le binôme (ou le retire si vide)
-//   - binomeStudentNumber absent   → binôme inchangé
+// POST — confirmer l'attribution d'un casier choisi au scan (pas de signature).
+// body: { studentNumber, lockerNumber, binomeStudentNumber? }
+//   - studentNumber       → l'élève scanné, devient titulaire (A) du casier
+//   - lockerNumber        → casier choisi dans le catalogue
+//   - binomeStudentNumber → 2e élève du casier (optionnel)
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -14,16 +16,25 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   const studentNumber = String(body?.studentNumber ?? "").trim();
-  if (!studentNumber) {
-    return NextResponse.json({ error: "missing_fields" }, { status: 400 });
-  }
-  const hasBinomeField =
-    body && Object.prototype.hasOwnProperty.call(body, "binomeStudentNumber");
-  const binomeRaw = hasBinomeField
-    ? String(body.binomeStudentNumber ?? "").trim()
-    : null;
+  const lockerNumber = String(body?.lockerNumber ?? "").trim();
+  const binomeRaw = String(body?.binomeStudentNumber ?? "").trim();
 
-  const locker = await prisma.locker.findFirst({
+  if (!studentNumber || !lockerNumber) {
+    return NextResponse.json(
+      { error: "Sélectionnez un casier avant de confirmer." },
+      { status: 400 },
+    );
+  }
+
+  const student = await prisma.student.findUnique({
+    where: { studentNumber },
+  });
+  if (!student) {
+    return NextResponse.json({ error: "Élève introuvable." }, { status: 404 });
+  }
+
+  // L'élève a-t-il déjà un casier ?
+  const existingLocker = await prisma.locker.findFirst({
     where: {
       OR: [
         { assignedStudentNumberA: studentNumber },
@@ -31,74 +42,94 @@ export async function POST(req: Request) {
       ],
     },
   });
-  if (!locker || !locker.assignedStudentNumberA) {
-    return NextResponse.json({ error: "no_locker" }, { status: 404 });
-  }
-
-  const owner = await prisma.student.findUnique({
-    where: { studentNumber: locker.assignedStudentNumberA },
-  });
-  if (!owner) {
-    return NextResponse.json({ error: "owner_not_found" }, { status: 404 });
-  }
-
-  const existing = await prisma.delivery.findUnique({
-    where: { studentId_type: { studentId: owner.id, type: "CASIER" } },
-  });
-  if (existing) {
+  if (existingLocker) {
     return NextResponse.json({ ok: true, already: true });
   }
 
-  // résoudre le binôme
-  let newBinomeNumber: string | null = locker.assignedStudentNumberB;
-  let binomeStudentId: string | null = null;
-  if (hasBinomeField) {
-    if (binomeRaw && binomeRaw !== owner.studentNumber) {
-      const binome = await prisma.student.findUnique({
-        where: { studentNumber: binomeRaw },
-      });
-      if (!binome) {
-        return NextResponse.json(
-          { error: "Binôme introuvable." },
-          { status: 400 },
-        );
-      }
-      newBinomeNumber = binome.studentNumber;
-      binomeStudentId = binome.id;
-    } else {
-      newBinomeNumber = null;
-    }
-  } else if (locker.assignedStudentNumberB) {
+  const locker = await prisma.locker.findUnique({
+    where: { number: lockerNumber },
+  });
+  if (!locker) {
+    return NextResponse.json(
+      { error: `Casier ${lockerNumber} introuvable dans le catalogue.` },
+      { status: 404 },
+    );
+  }
+  if (
+    locker.assignedStudentNumberA ||
+    locker.assignedStudentNumberB ||
+    locker.status === "DELIVERED"
+  ) {
+    return NextResponse.json(
+      { error: `Le casier ${lockerNumber} est déjà attribué.` },
+      { status: 409 },
+    );
+  }
+
+  // Binôme (optionnel)
+  let binome: { id: string; studentNumber: string } | null = null;
+  if (binomeRaw && binomeRaw !== studentNumber) {
     const b = await prisma.student.findUnique({
-      where: { studentNumber: locker.assignedStudentNumberB },
+      where: { studentNumber: binomeRaw },
     });
-    binomeStudentId = b?.id ?? null;
+    if (!b) {
+      return NextResponse.json(
+        { error: "Binôme introuvable." },
+        { status: 400 },
+      );
+    }
+    const bLocker = await prisma.locker.findFirst({
+      where: {
+        OR: [
+          { assignedStudentNumberA: binomeRaw },
+          { assignedStudentNumberB: binomeRaw },
+        ],
+      },
+    });
+    if (bLocker) {
+      return NextResponse.json(
+        { error: "Le binôme a déjà un casier." },
+        { status: 409 },
+      );
+    }
+    binome = { id: b.id, studentNumber: b.studentNumber };
   }
 
   const now = new Date();
-
   try {
     await prisma.$transaction([
       prisma.locker.update({
         where: { id: locker.id },
-        data: { status: "DELIVERED", assignedStudentNumberB: newBinomeNumber },
+        data: {
+          status: "DELIVERED",
+          assignedStudentNumberA: student.studentNumber,
+          assignedStudentNumberB: binome?.studentNumber ?? null,
+        },
       }),
       prisma.student.update({
-        where: { id: owner.id },
-        data: { lockerDeliveredAt: now },
+        where: { id: student.id },
+        data: {
+          lockerDeliveredAt: now,
+          assignedLockerNumber: locker.number,
+          assignedCombinationCode: locker.combinationCode,
+        },
       }),
-      ...(binomeStudentId
+      ...(binome
         ? [
             prisma.student.update({
-              where: { id: binomeStudentId },
-              data: { lockerDeliveredAt: now },
+              where: { id: binome.id },
+              data: {
+                lockerDeliveredAt: now,
+                assignedLockerNumber: locker.number,
+                assignedCombinationCode: locker.combinationCode,
+              },
             }),
           ]
         : []),
       prisma.delivery.create({
         data: {
           type: "CASIER",
-          studentId: owner.id,
+          studentId: student.id,
           operatorId: session.user.id as string,
           lockerId: locker.id,
           deliveredAt: now,
@@ -109,12 +140,21 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Conflit : ce binôme est déjà associé à un autre casier. " +
-          (e as Error).message,
+          "Conflit lors de l'attribution du casier. " + (e as Error).message,
       },
       { status: 409 },
     );
   }
+
+  await logAudit({
+    userId: String(session.user.id ?? ""),
+    userName: session.user.name || "?",
+    action: "casier.remise",
+    target: `casier ${locker.number}`,
+    details:
+      `attribué à l'élève ${student.studentNumber}` +
+      (binome ? ` + binôme ${binome.studentNumber}` : " (sans binôme)"),
+  });
 
   return NextResponse.json({ ok: true });
 }

@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 import Papa from "papaparse";
 
 // POST — import students.csv (PORTABLE list). SUPER_ADMIN only.
-// Columns: student_number,first_name,last_name,email,group,level,box_number,laptop_serial,laptop_model
+// Columns: student_number,first_name,last_name,email,group,box_number,laptop_serial,laptop_model
+// Le niveau (Sec 1-5) vient du sélecteur, passé en ?level=1..5.
 // Atomic: si una sola línea tiene error, no se importa nada.
 export async function POST(req: Request) {
   const session = await auth();
@@ -13,6 +14,19 @@ export async function POST(req: Request) {
   }
   if (session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const level = (new URL(req.url).searchParams.get("level") || "").trim();
+  if (!["1", "2", "3", "4", "5"].includes(level)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        total: 0,
+        imported: 0,
+        errors: ["Sélectionnez le niveau (Sec 1 à 5) avant d'importer."],
+      },
+      { status: 422 },
+    );
   }
 
   const csv = await req.text();
@@ -36,7 +50,6 @@ export async function POST(req: Request) {
     lastName: string;
     email: string;
     group: string;
-    level: string;
     boxNumber: string | null;
     laptopSerial: string | null;
     laptopModel: string | null;
@@ -49,7 +62,6 @@ export async function POST(req: Request) {
     const lastName = (row.last_name || "").trim();
     const email = (row.email || "").trim();
     const group = (row.group || "").trim();
-    const level = (row.level || "").trim();
 
     if (!studentNumber) {
       errors.push(`Ligne ${line}: numéro d'élève manquant`);
@@ -63,8 +75,8 @@ export async function POST(req: Request) {
       errors.push(`Ligne ${line}: courriel manquant (${studentNumber})`);
       return;
     }
-    if (!group || !level) {
-      errors.push(`Ligne ${line}: groupe ou niveau manquant (${studentNumber})`);
+    if (!group) {
+      errors.push(`Ligne ${line}: groupe manquant (${studentNumber})`);
       return;
     }
     valid.push({
@@ -73,7 +85,6 @@ export async function POST(req: Request) {
       lastName,
       email,
       group,
-      level,
       boxNumber: (row.box_number || "").trim() || null,
       laptopSerial: (row.laptop_serial || "").trim() || null,
       laptopModel: (row.laptop_model || "").trim() || null,
@@ -98,7 +109,7 @@ export async function POST(req: Request) {
             lastName: v.lastName,
             email: v.email,
             group: v.group,
-            level: v.level,
+            level,
             boxNumber: v.boxNumber,
             laptopSerial: v.laptopSerial,
             laptopModel: v.laptopModel,
@@ -110,7 +121,7 @@ export async function POST(req: Request) {
             lastName: v.lastName,
             email: v.email,
             group: v.group,
-            level: v.level,
+            level,
             boxNumber: v.boxNumber,
             laptopSerial: v.laptopSerial,
             laptopModel: v.laptopModel,

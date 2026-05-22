@@ -34,6 +34,13 @@ const CARDS = [
     sub: "Accéder au mode remise (portables / casiers).",
     accent: K.green,
   },
+  {
+    href: "/admin/audit",
+    emoji: "📋",
+    title: "Journal d'audit",
+    sub: "Historique des modifications et remises de casiers.",
+    accent: K.orange,
+  },
 ];
 
 export default async function AdminHome() {

@@ -1,5 +1,10 @@
 import { auth } from "@/auth";
-import { getReportData, fmtDeliveryDate } from "@/lib/reports";
+import {
+  getReportData,
+  fmtDeliveryDate,
+  getReportAccess,
+  clampReportType,
+} from "@/lib/reports";
 import ReportsScreen from "@/components/screens/ReportsScreen";
 
 export const dynamic = "force-dynamic";
@@ -11,15 +16,26 @@ export default async function ReportsPage({
 }) {
   const session = await auth();
   const sp = await searchParams;
+
+  // Accès aux rapports — restreint le type selon l'utilisateur.
+  const access = await getReportAccess(
+    session?.user?.id,
+    session?.user?.role,
+  );
+  const effectiveType = clampReportType(sp.type || "", access);
+
   const filters = {
-    type: sp.type || "",
+    type: effectiveType === "NONE" ? "" : effectiveType,
     level: sp.level || "",
     group: sp.group || "",
     state: sp.state || "",
     from: sp.from || "",
     to: sp.to || "",
   };
-  const { rows, stats, groups } = await getReportData(filters);
+  const { rows, stats, groups, byLevel } = await getReportData({
+    ...filters,
+    type: effectiveType,
+  });
 
   const clientRows = rows.map((r) => ({
     typeKey: r.typeKey,
@@ -34,6 +50,10 @@ export default async function ReportsPage({
     deliveryDate: fmtDeliveryDate(r.deliveryDate),
     operator: r.operator,
     binomeName: r.binomeName,
+    binomeNumber: r.binomeNumber,
+    lockerNumber: r.lockerNumber,
+    combinationCode: r.combinationCode,
+    petitCasier: r.petitCasier,
   }));
 
   return (
@@ -43,6 +63,8 @@ export default async function ReportsPage({
       groups={groups}
       filters={filters}
       role={session?.user?.role || "OPERATOR"}
+      access={access}
+      byLevel={byLevel}
     />
   );
 }

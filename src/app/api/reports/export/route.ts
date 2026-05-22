@@ -1,5 +1,10 @@
 import { auth } from "@/auth";
-import { getReportData, fmtDeliveryDate } from "@/lib/reports";
+import {
+  getReportData,
+  fmtDeliveryDate,
+  getReportAccess,
+  clampReportType,
+} from "@/lib/reports";
 import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 
@@ -14,7 +19,16 @@ export async function GET(req: Request) {
   }
 
   const sp = new URL(req.url).searchParams;
-  const typeFilter = sp.get("type") || "";
+
+  // Accès aux rapports — restreint le type au périmètre autorisé.
+  const access = await getReportAccess(session.user.id, role);
+  const typeFilter = clampReportType(sp.get("type") || "", access);
+  if (typeFilter === "NONE") {
+    return NextResponse.json(
+      { error: "Aucun accès aux rapports." },
+      { status: 403 },
+    );
+  }
   // Si on filtre par type → on ne produit que la feuille correspondante.
   const includeLaptops = !typeFilter || typeFilter === "LAPTOP";
   const includeCasiers = !typeFilter || typeFilter === "CASIER";
@@ -114,7 +128,7 @@ export async function GET(req: Request) {
           code: r.combinationCode,
           binomeN: r.binomeNumber,
           binomeNom: r.binomeName,
-          petitCasier: "", // saisie manuelle après export
+          petitCasier: r.petitCasier,
           etat: r.state,
           date: fmtDeliveryDate(r.deliveryDate),
           operateur: r.operator,

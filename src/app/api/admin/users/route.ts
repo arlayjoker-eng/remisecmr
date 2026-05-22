@@ -31,6 +31,8 @@ export async function GET() {
       fullName: true,
       role: true,
       active: true,
+      accessLaptopReports: true,
+      accessCasierReports: true,
       createdAt: true,
     },
   });
@@ -48,6 +50,8 @@ export async function POST(req: Request) {
   const password = String(body?.password ?? "");
   const role = String(body?.role ?? "OPERATOR");
   const active = body?.active !== false;
+  const accessLaptopReports = body?.accessLaptopReports === true;
+  const accessCasierReports = body?.accessCasierReports !== false;
 
   if (!email || !fullName) {
     return NextResponse.json(
@@ -76,7 +80,15 @@ export async function POST(req: Request) {
   const bcrypt = bcryptMod.default ?? bcryptMod;
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { email, fullName, passwordHash, role: role as never, active },
+    data: {
+      email,
+      fullName,
+      passwordHash,
+      role: role as never,
+      active,
+      accessLaptopReports,
+      accessCasierReports,
+    },
   });
   return NextResponse.json({ id: user.id });
 }

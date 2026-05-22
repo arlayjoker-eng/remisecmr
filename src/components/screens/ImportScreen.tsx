@@ -1,5 +1,5 @@
 "use client";
-// Admin CSV import — listes Portables et Casiers.
+// Admin CSV import — listes Portables, Casiers (élèves) et catalogue de casiers.
 import React from "react";
 import { useRouter } from "next/navigation";
 import { K, Btn, Icons } from "@/components/ui";
@@ -12,9 +12,9 @@ type Result = {
 } | null;
 
 const LAPTOP_HEADERS =
-  "student_number,first_name,last_name,email,group,level,box_number,laptop_serial,laptop_model";
-const LOCKER_HEADERS =
-  "student_number,first_name,last_name,group,level,locker_number,combination_code";
+  "student_number,first_name,last_name,email,group,box_number,laptop_serial,laptop_model";
+const CASIER_STUDENT_HEADERS = "student_number,first_name,last_name,group";
+const LOCKER_CATALOG_HEADERS = "locker_number,serial_number,combination_code";
 
 function downloadTemplate(filename: string, headers: string) {
   const blob = new Blob(["﻿" + headers + "\r\n"], {
@@ -88,18 +88,27 @@ export default function ImportScreen() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <UploadSection
-            title="Importer la liste des élèves recevant un PORTABLE"
+            title="Liste des élèves recevant un PORTABLE"
             endpoint="/api/admin/import/laptops"
             headers={LAPTOP_HEADERS}
             templateName="modele_portables.csv"
             accent={K.violet}
+            needsLevel
           />
           <UploadSection
-            title="Importer la liste des élèves recevant un CASIER"
+            title="Liste des élèves recevant un CASIER"
             endpoint="/api/admin/import/lockers"
-            headers={LOCKER_HEADERS}
-            templateName="modele_casiers.csv"
+            headers={CASIER_STUDENT_HEADERS}
+            templateName="modele_casiers_eleves.csv"
             accent={K.teal}
+            needsLevel
+          />
+          <UploadSection
+            title="Catalogue des casiers (numéro · série · code)"
+            endpoint="/api/admin/import/lockers-catalog"
+            headers={LOCKER_CATALOG_HEADERS}
+            templateName="modele_catalogue_casiers.csv"
+            accent={K.orange}
           />
         </div>
 
@@ -109,17 +118,21 @@ export default function ImportScreen() {
             fontSize: 12.5,
             color: "rgba(255,255,255,0.6)",
             fontFamily: K.mono,
+            lineHeight: 1.6,
           }}
         >
-          Import atomique : si une seule ligne contient une erreur, rien n'est
-          importé. Ré-importer un fichier met à jour les fiches existantes
-          (upsert) sans créer de doublons ni réinitialiser les remises déjà
-          effectuées.
+          Listes d&apos;élèves : sélectionnez le niveau (Sec 1 à 5) avant
+          d&apos;importer — il s&apos;applique à toutes les lignes du fichier.
+          Catalogue des casiers : crée les casiers disponibles ; l&apos;opérateur
+          en choisit un au scan. Import atomique : une seule erreur annule tout.
+          Ré-importer met à jour sans créer de doublons.
         </div>
       </div>
     </div>
   );
 }
+
+const LEVELS = ["1", "2", "3", "4", "5"];
 
 function UploadSection({
   title,
@@ -127,17 +140,20 @@ function UploadSection({
   headers,
   templateName,
   accent,
+  needsLevel,
 }: {
   title: string;
   endpoint: string;
   headers: string;
   templateName: string;
   accent: string;
+  needsLevel?: boolean;
 }) {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<Result>(null);
   const [fileName, setFileName] = React.useState("");
+  const [level, setLevel] = React.useState("");
 
   const upload = async (file: File | undefined) => {
     if (!file) return;
@@ -146,7 +162,9 @@ function UploadSection({
     setFileName(file.name);
     try {
       const text = await file.text();
-      const res = await fetch(endpoint, {
+      const url =
+        needsLevel && level ? `${endpoint}?level=${level}` : endpoint;
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "text/csv;charset=utf-8" },
         body: text,
@@ -165,6 +183,8 @@ function UploadSection({
       if (inputRef.current) inputRef.current.value = "";
     }
   };
+
+  const blocked = needsLevel && !level;
 
   return (
     <div
@@ -189,6 +209,50 @@ function UploadSection({
       >
         {title}
       </div>
+
+      {needsLevel && (
+        <div>
+          <div
+            style={{
+              fontFamily: K.display,
+              fontSize: 11,
+              fontWeight: 800,
+              color: K.ink3,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Niveau de cette liste
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {LEVELS.map((lv) => {
+              const on = level === lv;
+              return (
+                <button
+                  key={lv}
+                  onClick={() => setLevel(lv)}
+                  style={{
+                    border: on
+                      ? `2px solid ${accent}`
+                      : `2px solid ${K.lineStrong}`,
+                    background: on ? accent : K.surfaceCool,
+                    color: on ? "#fff" : K.ink2,
+                    borderRadius: 12,
+                    padding: "10px 18px",
+                    fontFamily: K.display,
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  Sec {lv}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div
         style={{
@@ -225,12 +289,18 @@ function UploadSection({
         <Btn
           kind="primary"
           size="md"
-          disabled={busy}
+          disabled={busy || blocked}
           icon={Icons.doc({ size: 18, stroke: "#fff" })}
           onClick={() => inputRef.current?.click()}
-          style={{ background: accent }}
+          style={{ background: blocked ? undefined : accent }}
         >
-          {busy ? "Import en cours…" : "Choisir un fichier CSV"}
+          {busy
+            ? "Import en cours…"
+            : blocked
+              ? "Choisissez d'abord le niveau"
+              : needsLevel
+                ? `Choisir le fichier CSV (Sec ${level})`
+                : "Choisir un fichier CSV"}
         </Btn>
         {result && (
           <Btn kind="ghost" size="md" onClick={() => setResult(null)}>

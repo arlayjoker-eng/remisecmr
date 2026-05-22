@@ -19,6 +19,31 @@ type Row = {
   deliveryDate: string;
   operator: string;
   binomeName: string;
+  binomeNumber: string;
+  lockerNumber: string;
+  combinationCode: string;
+  petitCasier: string;
+};
+
+type EditTarget = {
+  studentNumber: string;
+  name: string;
+  lockerNumber: string;
+  combinationCode: string;
+  binomeNumber: string;
+  binomeName: string;
+  petitCasier: string;
+};
+
+const canEdit = (role: string) =>
+  role === "SUPER_ADMIN" || role === "STAFF_MANAGER";
+
+type LevelRow = {
+  level: string;
+  laptopTotal: number;
+  laptopDone: number;
+  casierTotal: number;
+  casierDone: number;
 };
 
 type Filters = {
@@ -36,15 +61,31 @@ export default function ReportsScreen({
   groups,
   filters,
   role,
+  access,
+  byLevel,
 }: {
   rows: Row[];
   stats: { total: number; delivered: number; pending: number };
   groups: string[];
   filters: Filters;
   role: string;
+  access: { laptop: boolean; casier: boolean };
+  byLevel: LevelRow[];
 }) {
   const router = useRouter();
   const [f, setF] = React.useState<Filters>(filters);
+  const [search, setSearch] = React.useState("");
+  const [edit, setEdit] = React.useState<EditTarget | null>(null);
+
+  const filteredRows = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.studentNumber.toLowerCase().includes(q),
+    );
+  }, [rows, search]);
 
   const apply = (next: Filters) => {
     const qs = new URLSearchParams();
@@ -158,9 +199,15 @@ export default function ReportsScreen({
             value={f.type}
             onChange={(v) => setF({ ...f, type: v })}
             options={[
-              ["", "Tous"],
-              ["LAPTOP", "Portable"],
-              ["CASIER", "Casier"],
+              ...(access.laptop && access.casier
+                ? ([["", "Tous"]] as [string, string][])
+                : []),
+              ...(access.laptop
+                ? ([["LAPTOP", "Portable"]] as [string, string][])
+                : []),
+              ...(access.casier
+                ? ([["CASIER", "Casier"]] as [string, string][])
+                : []),
             ]}
           />
           <FilterSelect
@@ -234,6 +281,76 @@ export default function ReportsScreen({
           />
         </div>
 
+        {/* Progression par niveau */}
+        <div
+          style={{
+            background: "#fff",
+            color: K.ink,
+            borderRadius: 20,
+            padding: 18,
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: K.display,
+              fontSize: 11,
+              fontWeight: 800,
+              color: K.ink3,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              marginBottom: 12,
+            }}
+          >
+            Progression par niveau
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(5, 1fr)",
+              gap: 12,
+            }}
+          >
+            {byLevel.map((lv) => (
+              <div
+                key={lv.level}
+                style={{
+                  background: K.surfaceCool,
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: K.display,
+                    fontWeight: 800,
+                    fontSize: 14,
+                    color: K.ink,
+                  }}
+                >
+                  Secondaire {lv.level}
+                </div>
+                {access.casier && (
+                  <ProgressLine
+                    emoji="🔒"
+                    done={lv.casierDone}
+                    total={lv.casierTotal}
+                    color="#2BB070"
+                  />
+                )}
+                {access.laptop && (
+                  <ProgressLine
+                    emoji="💻"
+                    done={lv.laptopDone}
+                    total={lv.laptopTotal}
+                    color="#5B2BC9"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Export */}
         <div
           style={{
@@ -250,6 +367,57 @@ export default function ReportsScreen({
           >
             Télécharger Excel
           </Btn>
+        </div>
+
+        {/* Recherche rapide */}
+        <div
+          style={{
+            background: "#fff",
+            color: K.ink,
+            borderRadius: 16,
+            padding: "10px 14px",
+            marginBottom: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          {Icons.search({ size: 18, stroke: K.ink3 })}
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher par nom ou numéro d'élève…"
+            style={{
+              flex: 1,
+              border: "none",
+              outline: "none",
+              fontSize: 15,
+              fontWeight: 600,
+              fontFamily: K.display,
+              color: K.ink,
+              background: "transparent",
+            }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              style={{
+                border: "none",
+                background: K.surfaceCool,
+                color: K.ink2,
+                borderRadius: 999,
+                padding: "5px 10px",
+                fontWeight: 800,
+                fontSize: 11,
+                cursor: "pointer",
+              }}
+            >
+              ✕ effacer
+            </button>
+          )}
+          <div style={{ fontSize: 12, color: K.ink3, fontWeight: 700 }}>
+            {filteredRows.length} / {rows.length}
+          </div>
         </div>
 
         {/* Tableau */}
@@ -282,7 +450,9 @@ export default function ReportsScreen({
                   "Date livraison",
                   "Opérateur",
                   "Binôme",
+                  "Petit casier",
                   "Reçu PDF",
+                  "Actions",
                 ].map((h) => (
                   <th
                     key={h}
@@ -304,7 +474,7 @@ export default function ReportsScreen({
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => (
+              {filteredRows.map((r, i) => (
                 <tr key={i}>
                   <td style={td}>
                     <span style={{ fontFamily: K.mono, fontSize: 12.5 }}>
@@ -336,6 +506,16 @@ export default function ReportsScreen({
                   <td style={{ ...td, fontSize: 12.5 }}>
                     {r.binomeName || "—"}
                   </td>
+                  <td
+                    style={{
+                      ...td,
+                      fontSize: 12.5,
+                      fontFamily: K.mono,
+                      color: r.petitCasier ? K.ink : K.ink4,
+                    }}
+                  >
+                    {r.typeKey === "CASIER" ? r.petitCasier || "—" : "—"}
+                  </td>
                   <td style={td}>
                     {r.typeKey === "LAPTOP" && r.stateKey === "DELIVERED" ? (
                       <PdfCell folio={`AE-26-${r.studentNumber}`} />
@@ -343,12 +523,34 @@ export default function ReportsScreen({
                       <span style={{ color: K.ink4 }}>—</span>
                     )}
                   </td>
+                  <td style={td}>
+                    {r.typeKey === "CASIER" && canEdit(role) ? (
+                      <button
+                        onClick={() =>
+                          setEdit({
+                            studentNumber: r.studentNumber,
+                            name: r.name,
+                            lockerNumber: r.lockerNumber,
+                            combinationCode: r.combinationCode,
+                            binomeNumber: r.binomeNumber,
+                            binomeName: r.binomeName,
+                            petitCasier: r.petitCasier,
+                          })
+                        }
+                        style={editBtnStyle}
+                      >
+                        ✎ Modifier
+                      </button>
+                    ) : (
+                      <span style={{ color: K.ink4 }}>—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
-              {rows.length === 0 && (
+              {filteredRows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={11}
+                    colSpan={13}
                     style={{
                       ...td,
                       textAlign: "center",
@@ -356,7 +558,9 @@ export default function ReportsScreen({
                       padding: 32,
                     }}
                   >
-                    Aucun résultat pour ces filtres.
+                    {rows.length === 0
+                      ? "Aucun résultat pour ces filtres."
+                      : "Aucun résultat pour cette recherche."}
                   </td>
                 </tr>
               )}
@@ -364,6 +568,241 @@ export default function ReportsScreen({
           </table>
         </div>
       </div>
+
+      {edit && (
+        <CasierEditModal
+          target={edit}
+          onClose={() => setEdit(null)}
+          onSaved={() => {
+            setEdit(null);
+            router.refresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+const editBtnStyle: React.CSSProperties = {
+  border: "none",
+  borderRadius: 999,
+  padding: "6px 12px",
+  background: "#1E3A5F",
+  color: "#fff",
+  fontFamily: K.display,
+  fontWeight: 800,
+  fontSize: 11,
+  letterSpacing: 0.6,
+  textTransform: "uppercase",
+  cursor: "pointer",
+};
+
+function CasierEditModal({
+  target,
+  onClose,
+  onSaved,
+}: {
+  target: EditTarget;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [casier, setCasier] = React.useState(target.lockerNumber);
+  const [code, setCode] = React.useState(target.combinationCode);
+  const [binome, setBinome] = React.useState(target.binomeNumber);
+  const [petit, setPetit] = React.useState(target.petitCasier);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+
+  const submit = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch(
+        `/api/admin/casier/${encodeURIComponent(target.studentNumber)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            casier,
+            code,
+            binomeNumber: binome,
+            petitCasier: petit,
+          }),
+        },
+      );
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || "Erreur");
+      onSaved();
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 90,
+        background: "rgba(8,0,31,0.55)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          width: 480,
+          maxWidth: "100%",
+          background: "#fff",
+          color: K.ink,
+          borderRadius: 28,
+          padding: 28,
+          boxShadow: "0 30px 80px rgba(15,0,60,0.45)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+          maxHeight: "90vh",
+          overflow: "auto",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontFamily: K.display,
+              fontSize: 11,
+              fontWeight: 800,
+              color: "#2BB070",
+              letterSpacing: 1.4,
+              textTransform: "uppercase",
+            }}
+          >
+            ● Modifier casier
+          </div>
+          <div
+            style={{
+              fontFamily: K.display,
+              fontSize: 22,
+              fontWeight: 800,
+              color: K.ink,
+              letterSpacing: -0.6,
+              marginTop: 2,
+            }}
+          >
+            {target.name}
+          </div>
+          <div style={{ fontSize: 12, color: K.ink3, marginTop: 2 }}>
+            N° {target.studentNumber}
+          </div>
+        </div>
+
+        <EditField
+          label="Casier (numéro)"
+          value={casier}
+          onChange={setCasier}
+          placeholder="ex. 218"
+        />
+        <EditField
+          label="Code du cadenas"
+          value={code}
+          onChange={setCode}
+          placeholder="ex. 12-24-08"
+        />
+        <EditField
+          label={`Binôme (numéro élève)${target.binomeName ? " — actuel: " + target.binomeName : ""}`}
+          value={binome}
+          onChange={setBinome}
+          placeholder="Numéro de l'élève — vide pour aucun"
+        />
+        <EditField
+          label="Petit casier"
+          value={petit}
+          onChange={setPetit}
+          placeholder="ex. PC-04"
+        />
+
+        {err && (
+          <div
+            style={{
+              background: K.pinkSoft,
+              color: "#B2245A",
+              borderRadius: 12,
+              padding: "10px 14px",
+              fontSize: 12.5,
+              fontWeight: 700,
+            }}
+          >
+            {err}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+          <Btn kind="ghost" size="md" onClick={onClose} style={{ flex: 1 }}>
+            Annuler
+          </Btn>
+          <Btn
+            kind="primary"
+            size="md"
+            onClick={submit}
+            disabled={busy}
+            style={{ flex: 2 }}
+          >
+            {busy ? "Enregistrement…" : "Enregistrer"}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <div
+        style={{
+          fontFamily: K.display,
+          fontSize: 11,
+          fontWeight: 800,
+          color: K.ink3,
+          letterSpacing: 1,
+          textTransform: "uppercase",
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </div>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          height: 46,
+          borderRadius: 12,
+          border: `2px solid ${K.lineStrong}`,
+          padding: "0 14px",
+          fontSize: 15,
+          fontWeight: 600,
+          fontFamily: K.display,
+          color: K.ink,
+          outline: "none",
+          background: K.surfaceCool,
+        }}
+      />
     </div>
   );
 }
@@ -442,6 +881,52 @@ function StatCard({
             </span>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ProgressLine({
+  emoji,
+  done,
+  total,
+  color,
+}: {
+  emoji: string;
+  done: number;
+  total: number;
+  color: string;
+}) {
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: 12,
+          fontWeight: 800,
+          color: K.ink2,
+          fontFamily: K.display,
+        }}
+      >
+        <span>{emoji}</span>
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>
+          {done}/{total}
+        </span>
+      </div>
+      <div
+        style={{
+          height: 6,
+          borderRadius: 3,
+          background: K.line,
+          marginTop: 4,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{ height: "100%", width: `${pct}%`, background: color }}
+        />
       </div>
     </div>
   );

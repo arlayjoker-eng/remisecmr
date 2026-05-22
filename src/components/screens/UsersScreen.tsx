@@ -10,6 +10,8 @@ type User = {
   fullName: string;
   role: string;
   active: boolean;
+  accessLaptopReports: boolean;
+  accessCasierReports: boolean;
   createdAt: string;
 };
 
@@ -17,6 +19,15 @@ const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Admin",
   STAFF_MANAGER: "Gestionnaire",
   OPERATOR: "Opérateur",
+};
+
+const accessRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  cursor: "pointer",
+  fontWeight: 700,
+  fontSize: 14,
 };
 
 const inputStyle: React.CSSProperties = {
@@ -393,6 +404,12 @@ function UserForm({
   const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState(user?.role || "OPERATOR");
   const [active, setActive] = React.useState(user?.active ?? true);
+  const [accLaptop, setAccLaptop] = React.useState(
+    user?.accessLaptopReports ?? false,
+  );
+  const [accCasier, setAccCasier] = React.useState(
+    user?.accessCasierReports ?? true,
+  );
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
 
@@ -408,13 +425,23 @@ function UserForm({
               fullName,
               role,
               active,
+              accessLaptopReports: accLaptop,
+              accessCasierReports: accCasier,
               ...(password ? { password } : {}),
             }),
           })
         : await fetch("/api/admin/users", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, fullName, password, role, active }),
+            body: JSON.stringify({
+              email,
+              fullName,
+              password,
+              role,
+              active,
+              accessLaptopReports: accLaptop,
+              accessCasierReports: accCasier,
+            }),
           });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j?.error || "Erreur");
@@ -534,6 +561,44 @@ function UserForm({
           />
           Compte actif
         </label>
+
+        {role === "STAFF_MANAGER" && (
+          <div
+            style={{
+              border: `2px solid ${K.line}`,
+              borderRadius: 14,
+              padding: "12px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <Label>Accès aux rapports</Label>
+            <label style={accessRowStyle}>
+              <input
+                type="checkbox"
+                checked={accCasier}
+                onChange={(e) => setAccCasier(e.target.checked)}
+                style={{ width: 20, height: 20 }}
+              />
+              Rapports Casiers
+            </label>
+            <label style={accessRowStyle}>
+              <input
+                type="checkbox"
+                checked={accLaptop}
+                onChange={(e) => setAccLaptop(e.target.checked)}
+                style={{ width: 20, height: 20 }}
+              />
+              Rapports Portables
+            </label>
+          </div>
+        )}
+        {role === "SUPER_ADMIN" && (
+          <div style={{ fontSize: 12, color: K.ink3, fontWeight: 600 }}>
+            Le Super Admin voit tous les rapports (Portables et Casiers).
+          </div>
+        )}
 
         {err && (
           <div

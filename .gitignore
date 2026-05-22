@@ -13,5 +13,8 @@ next-env.d.ts
 prisma/*.db
 prisma/*.db-journal
 
+# database backups
+backups
+
 # generated PDFs
 pdfs
