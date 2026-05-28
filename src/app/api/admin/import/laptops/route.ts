@@ -1,7 +1,48 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { parseImport } from "@/lib/import-parse";
+import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
+
+// DELETE — efface toute la liste des élèves recevant un portable.
+// Supprime les livraisons LAPTOP, retire receivesLaptop, et nettoie les
+// élèves orphelins (ni portable ni casier). SUPER_ADMIN only.
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (session.user.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  const before = await prisma.student.count({
+    where: { receivesLaptop: true },
+  });
+  await prisma.$transaction([
+    prisma.delivery.deleteMany({ where: { type: "LAPTOP" } }),
+    prisma.student.updateMany({
+      where: { receivesLaptop: true },
+      data: {
+        receivesLaptop: false,
+        boxNumber: null,
+        laptopSerial: null,
+        laptopModel: null,
+        laptopStatus: "PENDING",
+      },
+    }),
+    prisma.student.deleteMany({
+      where: { receivesLaptop: false, receivesLocker: false },
+    }),
+  ]);
+  await logAudit({
+    userId: String(session.user.id ?? ""),
+    userName: session.user.name || "?",
+    action: "import.delete",
+    target: "liste Portables",
+    details: `${before} élève(s) effacé(s)`,
+  });
+  return NextResponse.json({ ok: true, deleted: before });
+}
 
 // POST — import liste PORTABLE (CSV ou Excel .xlsx). SUPER_ADMIN only.
 // Columns: student_number,first_name,last_name,email,group,box_number,laptop_serial,laptop_model

@@ -1,7 +1,55 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { parseImport } from "@/lib/import-parse";
+import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
+
+// DELETE — efface toute la liste des élèves recevant un casier.
+// Supprime les livraisons CASIER, libère les casiers assignés, retire
+// receivesLocker, et supprime les élèves orphelins. SUPER_ADMIN only.
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (session.user.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  const before = await prisma.student.count({
+    where: { receivesLocker: true },
+  });
+  await prisma.$transaction([
+    prisma.delivery.deleteMany({ where: { type: "CASIER" } }),
+    prisma.locker.updateMany({
+      data: {
+        assignedStudentNumberA: null,
+        assignedStudentNumberB: null,
+        status: "AVAILABLE",
+      },
+    }),
+    prisma.student.updateMany({
+      where: { receivesLocker: true },
+      data: {
+        receivesLocker: false,
+        assignedLockerNumber: null,
+        assignedCombinationCode: null,
+        lockerDeliveredAt: null,
+        petitCasier: null,
+      },
+    }),
+    prisma.student.deleteMany({
+      where: { receivesLaptop: false, receivesLocker: false },
+    }),
+  ]);
+  await logAudit({
+    userId: String(session.user.id ?? ""),
+    userName: session.user.name || "?",
+    action: "import.delete",
+    target: "liste Casiers (élèves)",
+    details: `${before} élève(s) effacé(s)`,
+  });
+  return NextResponse.json({ ok: true, deleted: before });
+}
 
 // POST — import de la liste des élèves recevant un CASIER. SUPER_ADMIN only.
 // Columns: student_number,first_name,last_name,group

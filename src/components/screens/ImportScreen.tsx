@@ -283,6 +283,28 @@ function UploadSection({
   const [file, setFile] = React.useState<File | null>(null);
   const [fileName, setFileName] = React.useState("");
   const [level, setLevel] = React.useState("");
+  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteFlash, setDeleteFlash] = React.useState("");
+
+  const doDelete = async () => {
+    setDeleting(true);
+    setResult(null);
+    try {
+      const res = await fetch(endpoint, { method: "DELETE" });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || "Erreur");
+      setDeleteFlash(`✓ ${j.deleted ?? 0} entrée(s) supprimée(s).`);
+      setConfirmingDelete(false);
+      setFile(null);
+      router.refresh();
+      setTimeout(() => setDeleteFlash(""), 5000);
+    } catch (e) {
+      setDeleteFlash(`✗ ${(e as Error).message}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Étape 1 — choisir le fichier (ne l'importe PAS encore).
   const pickFile = (f: File | undefined) => {
@@ -546,6 +568,89 @@ function UploadSection({
           )}
         </div>
       )}
+
+      {/* Effacer la liste — zone destructive */}
+      <div
+        style={{
+          borderTop: `1px solid ${K.line}`,
+          paddingTop: 14,
+          marginTop: 4,
+        }}
+      >
+        {deleteFlash && (
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: deleteFlash.startsWith("✓") ? "#1F8A47" : "#B2245A",
+              marginBottom: 10,
+            }}
+          >
+            {deleteFlash}
+          </div>
+        )}
+        {!confirmingDelete ? (
+          <button
+            onClick={() => {
+              setConfirmingDelete(true);
+              setDeleteFlash("");
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#B2245A",
+              fontFamily: K.display,
+              fontSize: 12,
+              fontWeight: 800,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            🗑️ Effacer cette liste
+          </button>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
+              background: K.pinkSoft,
+              borderRadius: 12,
+              padding: "10px 14px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 13,
+                color: "#B2245A",
+                fontWeight: 700,
+                flex: 1,
+                minWidth: 200,
+              }}
+            >
+              Cette action est irréversible. Effacer ?
+            </span>
+            <Btn
+              kind="cta"
+              size="sm"
+              disabled={deleting}
+              onClick={doDelete}
+            >
+              {deleting ? "Suppression…" : "Oui, effacer"}
+            </Btn>
+            <Btn
+              kind="ghost"
+              size="sm"
+              onClick={() => setConfirmingDelete(false)}
+            >
+              Annuler
+            </Btn>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

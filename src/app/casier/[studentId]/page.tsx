@@ -32,6 +32,22 @@ export default async function CasierPage({
     include: { studentA: true, studentB: true },
   });
 
+  // Casiers disponibles du catalogue — pour l'attribution ET la correction.
+  const lockers = await prisma.locker.findMany({
+    where: {
+      assignedStudentNumberA: null,
+      assignedStudentNumberB: null,
+      status: "AVAILABLE",
+    },
+    select: { number: true, serialNumber: true, combinationCode: true },
+    orderBy: { number: "asc" },
+  });
+  const availableLockers = lockers.map((l) => ({
+    number: l.number,
+    serialNumber: l.serialNumber || "",
+    combinationCode: l.combinationCode,
+  }));
+
   if (existing) {
     const isA = existing.assignedStudentNumberA === student.studentNumber;
     const partner = isA ? existing.studentB : existing.studentA;
@@ -45,22 +61,11 @@ export default async function CasierPage({
           combinationCode: existing.combinationCode,
         }}
         binome={partner ? toClientStudent(partner) : null}
-        availableLockers={[]}
+        availableLockers={availableLockers}
         operatorName={operatorName}
       />
     );
   }
-
-  // Mode attribution — l'opérateur choisit un casier du catalogue.
-  const lockers = await prisma.locker.findMany({
-    where: {
-      assignedStudentNumberA: null,
-      assignedStudentNumberB: null,
-      status: "AVAILABLE",
-    },
-    select: { number: true, serialNumber: true, combinationCode: true },
-    orderBy: { number: "asc" },
-  });
 
   return (
     <CasierScreen
@@ -68,11 +73,7 @@ export default async function CasierPage({
       mode="assign"
       assignedLocker={null}
       binome={null}
-      availableLockers={lockers.map((l) => ({
-        number: l.number,
-        serialNumber: l.serialNumber || "",
-        combinationCode: l.combinationCode,
-      }))}
+      availableLockers={availableLockers}
       operatorName={operatorName}
     />
   );

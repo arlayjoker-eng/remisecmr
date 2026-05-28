@@ -41,6 +41,9 @@ export default function CasierScreen({
 }: Props) {
   const router = useRouter();
   const isDone = mode === "done";
+  const [correcting, setCorrecting] = React.useState(false);
+  // Sélection active : nouvelle attribution OU correction d'un casier remis.
+  const pickMode = !isDone || correcting;
 
   const [picked, setPicked] = React.useState<LockerOpt | null>(assignedLocker);
   const [lockerQuery, setLockerQuery] = React.useState("");
@@ -95,15 +98,18 @@ export default function CasierScreen({
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/casier/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentNumber: student.studentNumber,
-          lockerNumber: picked.number,
-          binomeStudentNumber: selectedBinome?.studentNumber ?? "",
-        }),
-      });
+      const res = await fetch(
+        correcting ? "/api/casier/reassign" : "/api/casier/confirm",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentNumber: student.studentNumber,
+            lockerNumber: picked.number,
+            binomeStudentNumber: selectedBinome?.studentNumber ?? "",
+          }),
+        },
+      );
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j?.error || "Échec de la remise.");
       setSuccess(true);
@@ -179,7 +185,11 @@ export default function CasierScreen({
                 marginTop: 2,
               }}
             >
-              {isDone ? "Casier déjà remis" : "Attribuer le casier"}
+              {correcting
+                ? "Changer le casier"
+                : isDone
+                  ? "Casier déjà remis"
+                  : "Attribuer le casier"}
             </div>
           </div>
         </div>
@@ -191,11 +201,18 @@ export default function CasierScreen({
             text="Selon le CSV importé, cet élève n'est pas sur la liste des casiers."
           />
         )}
-        {isDone && (
+        {isDone && !correcting && (
           <Alert
             tone="amber"
             title="Casier déjà attribué"
             text="Cet élève a déjà un casier enregistré dans la base."
+          />
+        )}
+        {correcting && (
+          <Alert
+            tone="amber"
+            title="Correction du casier"
+            text="Choisissez le nouveau casier. L'ancien sera libéré et redeviendra disponible."
           />
         )}
 
@@ -340,7 +357,7 @@ export default function CasierScreen({
                   </span>
                 </div>
               </div>
-              {!isDone && (
+              {pickMode && (
                 <button
                   onClick={() => setSelectedBinome(null)}
                   style={{
@@ -362,7 +379,7 @@ export default function CasierScreen({
               )}
             </div>
           ) : (
-            !isDone && (
+            pickMode && (
               <div style={{ position: "relative" }}>
                 <div
                   style={{
@@ -468,7 +485,7 @@ export default function CasierScreen({
           overflow: "auto",
         }}
       >
-        {!isDone && !picked ? (
+        {pickMode && !picked ? (
           /* ─── Sélecteur de casier ─────────────────────────── */
           <div
             style={{
@@ -659,7 +676,7 @@ export default function CasierScreen({
                   opacity: 0.85,
                 }}
               >
-                🔒 Casier {isDone ? "attribué" : "sélectionné"}
+                🔒 Casier {pickMode ? "sélectionné" : "attribué"}
               </div>
               <div
                 style={{
@@ -699,7 +716,7 @@ export default function CasierScreen({
               />
             </div>
 
-            {!isDone && (
+            {pickMode && (
               <button
                 onClick={() => {
                   setPicked(null);
@@ -719,7 +736,7 @@ export default function CasierScreen({
                   cursor: "pointer",
                 }}
               >
-                ↻ Changer de casier
+                ↻ Choisir un autre casier
               </button>
             )}
 
@@ -764,16 +781,32 @@ export default function CasierScreen({
                 .
               </div>
 
-              {isDone ? (
-                <Btn
-                  kind="ghost"
-                  size="lg"
-                  full
-                  icon={Icons.back({ size: 22 })}
-                  onClick={() => router.push("/scan?mode=casier")}
-                >
-                  Retour au scanner
-                </Btn>
+              {isDone && !correcting ? (
+                <>
+                  <Btn
+                    kind="warm"
+                    size="lg"
+                    full
+                    icon={Icons.refresh({ size: 20, stroke: "#fff" })}
+                    onClick={() => {
+                      setCorrecting(true);
+                      setPicked(null);
+                      setLockerQuery("");
+                      setError("");
+                    }}
+                  >
+                    Changer le casier (corriger)
+                  </Btn>
+                  <Btn
+                    kind="ghost"
+                    size="lg"
+                    full
+                    icon={Icons.back({ size: 22 })}
+                    onClick={() => router.push("/scan?mode=casier")}
+                  >
+                    Retour au scanner
+                  </Btn>
+                </>
               ) : (
                 <Btn
                   kind="success"
@@ -789,7 +822,11 @@ export default function CasierScreen({
                   }
                   onClick={confirm}
                 >
-                  {busy ? "Enregistrement…" : "Confirmer la remise du casier"}
+                  {busy
+                    ? "Enregistrement…"
+                    : correcting
+                      ? "Confirmer le nouveau casier"
+                      : "Confirmer la remise du casier"}
                 </Btn>
               )}
             </div>

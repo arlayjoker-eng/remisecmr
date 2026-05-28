@@ -1,7 +1,41 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { parseImport } from "@/lib/import-parse";
+import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
+
+// DELETE — efface tout le catalogue des casiers.
+// Supprime les livraisons CASIER (référencent les casiers), tous les
+// casiers, et nettoie le cache casier des élèves. SUPER_ADMIN only.
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (session.user.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  const before = await prisma.locker.count();
+  await prisma.$transaction([
+    prisma.delivery.deleteMany({ where: { type: "CASIER" } }),
+    prisma.locker.deleteMany({}),
+    prisma.student.updateMany({
+      data: {
+        assignedLockerNumber: null,
+        assignedCombinationCode: null,
+        lockerDeliveredAt: null,
+      },
+    }),
+  ]);
+  await logAudit({
+    userId: String(session.user.id ?? ""),
+    userName: session.user.name || "?",
+    action: "import.delete",
+    target: "catalogue Casiers",
+    details: `${before} casier(s) effacé(s)`,
+  });
+  return NextResponse.json({ ok: true, deleted: before });
+}
 
 // POST — import du CATALOGUE des casiers physiques. SUPER_ADMIN only.
 // Columns: locker_number,serial_number,combination_code
