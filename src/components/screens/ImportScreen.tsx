@@ -11,9 +11,8 @@ type Result = {
   errors: string[];
 } | null;
 
-const LAPTOP_HEADERS =
-  "student_number,first_name,last_name,email,group,box_number,laptop_serial,laptop_model";
-const CASIER_STUDENT_HEADERS = "student_number,first_name,last_name,group";
+const STUDENT_HEADERS =
+  "student_number,first_name,last_name,group,email,box_number,laptop_serial,laptop_model";
 const LOCKER_CATALOG_HEADERS = "locker_number,serial_number,combination_code";
 
 function downloadTemplate(filename: string, headers: string) {
@@ -161,20 +160,13 @@ export default function ImportScreen({
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <UploadSection
-            title="Liste des élèves recevant un PORTABLE"
-            endpoint="/api/admin/import/laptops"
-            headers={LAPTOP_HEADERS}
-            templateName="modele_portables.csv"
+            title="Liste des élèves"
+            endpoint="/api/admin/import/students"
+            headers={STUDENT_HEADERS}
+            templateName="modele_eleves.csv"
             accent={K.violet}
             needsLevel
-          />
-          <UploadSection
-            title="Liste des élèves recevant un CASIER"
-            endpoint="/api/admin/import/lockers"
-            headers={CASIER_STUDENT_HEADERS}
-            templateName="modele_casiers_eleves.csv"
-            accent={K.teal}
-            needsLevel
+            withFlags
           />
           <UploadSection
             title="Catalogue des casiers (numéro · série · code)"
@@ -268,6 +260,7 @@ function UploadSection({
   templateName,
   accent,
   needsLevel,
+  withFlags,
 }: {
   title: string;
   endpoint: string;
@@ -275,6 +268,7 @@ function UploadSection({
   templateName: string;
   accent: string;
   needsLevel?: boolean;
+  withFlags?: boolean;
 }) {
   const router = useRouter();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
@@ -283,6 +277,8 @@ function UploadSection({
   const [file, setFile] = React.useState<File | null>(null);
   const [fileName, setFileName] = React.useState("");
   const [level, setLevel] = React.useState("");
+  const [flagLaptop, setFlagLaptop] = React.useState(true);
+  const [flagLocker, setFlagLocker] = React.useState(true);
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [deleteFlash, setDeleteFlash] = React.useState("");
@@ -320,8 +316,14 @@ function UploadSection({
     setResult(null);
     setFileName(file.name);
     try {
-      const url =
-        needsLevel && level ? `${endpoint}?level=${level}` : endpoint;
+      const params = new URLSearchParams();
+      if (needsLevel && level) params.set("level", level);
+      if (withFlags) {
+        params.set("withLaptop", flagLaptop ? "1" : "0");
+        params.set("withLocker", flagLocker ? "1" : "0");
+      }
+      const qs = params.toString();
+      const url = qs ? `${endpoint}?${qs}` : endpoint;
       // On envoie le fichier brut — le serveur détecte CSV ou Excel.
       const res = await fetch(url, { method: "POST", body: file });
       const j = (await res.json()) as Result;
@@ -342,7 +344,13 @@ function UploadSection({
     }
   };
 
-  const blocked = needsLevel && !level;
+  const blockedReason =
+    needsLevel && !level
+      ? "Choisissez d'abord le niveau"
+      : withFlags && !flagLaptop && !flagLocker
+        ? "Cochez au moins un programme"
+        : null;
+  const blocked = !!blockedReason;
 
   return (
     <div
@@ -412,6 +420,64 @@ function UploadSection({
         </div>
       )}
 
+      {withFlags && (
+        <div>
+          <div
+            style={{
+              fontFamily: K.display,
+              fontSize: 11,
+              fontWeight: 800,
+              color: K.ink3,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Ces élèves reçoivent
+          </div>
+          <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                cursor: "pointer",
+                fontWeight: 700,
+                fontSize: 14,
+                color: K.ink,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={flagLaptop}
+                onChange={(e) => setFlagLaptop(e.target.checked)}
+                style={{ width: 20, height: 20 }}
+              />
+              💻 Un portable
+            </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                cursor: "pointer",
+                fontWeight: 700,
+                fontSize: 14,
+                color: K.ink,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={flagLocker}
+                onChange={(e) => setFlagLocker(e.target.checked)}
+                style={{ width: 20, height: 20 }}
+              />
+              🔒 Un casier
+            </label>
+          </div>
+        </div>
+      )}
+
       <div
         style={{
           fontFamily: K.mono,
@@ -453,7 +519,7 @@ function UploadSection({
           style={{ background: blocked ? undefined : accent }}
         >
           {blocked
-            ? "Choisissez d'abord le niveau"
+            ? blockedReason
             : file
               ? "Changer de fichier"
               : "1. Choisir un fichier CSV / Excel"}

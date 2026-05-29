@@ -56,6 +56,39 @@ export default function CasierScreen({
   const [busy, setBusy] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState("");
+  const [savingBinome, setSavingBinome] = React.useState(false);
+  const [binomeFlash, setBinomeFlash] = React.useState("");
+
+  // Binôme modifié sans changer de casier ? (mode « done », hors correction)
+  const binomeDirty =
+    isDone &&
+    !correcting &&
+    (selectedBinome?.studentNumber ?? null) !== (binome?.studentNumber ?? null);
+
+  const saveBinome = async () => {
+    if (savingBinome || !binomeDirty) return;
+    setSavingBinome(true);
+    setBinomeFlash("");
+    try {
+      const res = await fetch("/api/casier/update-binome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentNumber: student.studentNumber,
+          binomeStudentNumber: selectedBinome?.studentNumber ?? "",
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || "Échec de la mise à jour.");
+      setBinomeFlash("✓ Binôme enregistré.");
+      router.refresh();
+      setTimeout(() => setBinomeFlash(""), 4000);
+    } catch (e) {
+      setBinomeFlash("✗ " + (e as Error).message);
+    } finally {
+      setSavingBinome(false);
+    }
+  };
 
   // recherche binôme (debounce)
   React.useEffect(() => {
@@ -357,29 +390,27 @@ export default function CasierScreen({
                   </span>
                 </div>
               </div>
-              {pickMode && (
-                <button
-                  onClick={() => setSelectedBinome(null)}
-                  style={{
-                    border: "none",
-                    background: K.pinkSoft,
-                    color: "#B2245A",
-                    borderRadius: 999,
-                    padding: "8px 14px",
-                    fontFamily: K.display,
-                    fontSize: 11,
-                    fontWeight: 800,
-                    letterSpacing: 0.8,
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                  }}
-                >
-                  Retirer
-                </button>
-              )}
+              <button
+                onClick={() => setSelectedBinome(null)}
+                style={{
+                  border: "none",
+                  background: K.pinkSoft,
+                  color: "#B2245A",
+                  borderRadius: 999,
+                  padding: "8px 14px",
+                  fontFamily: K.display,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                }}
+              >
+                Retirer
+              </button>
             </div>
           ) : (
-            pickMode && (
+            (
               <div style={{ position: "relative" }}>
                 <div
                   style={{
@@ -468,6 +499,59 @@ export default function CasierScreen({
                 )}
               </div>
             )
+          )}
+
+          {/* Enregistrer le binôme — mode « done » uniquement */}
+          {(binomeDirty || binomeFlash) && (
+            <div
+              style={{
+                marginTop: 14,
+                paddingTop: 14,
+                borderTop: `1px solid ${K.line}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              {binomeFlash && (
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: binomeFlash.startsWith("✓") ? "#1F8A47" : "#B2245A",
+                  }}
+                >
+                  {binomeFlash}
+                </span>
+              )}
+              {binomeDirty && (
+                <>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: K.ink3,
+                      fontWeight: 700,
+                      flex: 1,
+                      minWidth: 140,
+                    }}
+                  >
+                    Changement non enregistré
+                  </span>
+                  <Btn
+                    kind="success"
+                    size="md"
+                    disabled={savingBinome}
+                    icon={Icons.check({ size: 18, stroke: "#fff" })}
+                    onClick={saveBinome}
+                  >
+                    {savingBinome
+                      ? "Enregistrement…"
+                      : "Enregistrer le binôme"}
+                  </Btn>
+                </>
+              )}
+            </div>
           )}
         </div>
 
