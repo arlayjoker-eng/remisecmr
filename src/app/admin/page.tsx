@@ -42,6 +42,13 @@ const CARDS = [
     accent: K.yellow,
   },
   {
+    href: "/reception",
+    emoji: "🔔",
+    title: "Réception",
+    sub: "Annoncer un élève au poste de remise des portables.",
+    accent: K.pink,
+  },
+  {
     href: "/admin/audit",
     emoji: "📋",
     title: "Journal d'audit",

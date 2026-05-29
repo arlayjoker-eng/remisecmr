@@ -85,5 +85,8 @@ export async function POST(req: Request) {
     data: { laptopStatus: "DELIVERED" },
   });
 
+  // Si l'élève avait été annoncé par la réception, on retire l'annonce.
+  await prisma.annonce.deleteMany({ where: { studentId: student.id } });
+
   return NextResponse.json({ folio: delivery.folio, sha256 });
 }

@@ -33,6 +33,7 @@ export async function GET() {
       active: true,
       accessLaptopReports: true,
       accessCasierReports: true,
+      accessReception: true,
       createdAt: true,
     },
   });
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
   const active = body?.active !== false;
   const accessLaptopReports = body?.accessLaptopReports === true;
   const accessCasierReports = body?.accessCasierReports !== false;
+  const accessReception = body?.accessReception === true;
 
   if (!email || !fullName) {
     return NextResponse.json(
@@ -88,6 +90,7 @@ export async function POST(req: Request) {
       active,
       accessLaptopReports,
       accessCasierReports,
+      accessReception,
     },
   });
   return NextResponse.json({ id: user.id });

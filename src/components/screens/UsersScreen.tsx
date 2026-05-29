@@ -12,6 +12,7 @@ type User = {
   active: boolean;
   accessLaptopReports: boolean;
   accessCasierReports: boolean;
+  accessReception: boolean;
   createdAt: string;
 };
 
@@ -410,6 +411,9 @@ function UserForm({
   const [accCasier, setAccCasier] = React.useState(
     user?.accessCasierReports ?? true,
   );
+  const [accReception, setAccReception] = React.useState(
+    user?.accessReception ?? false,
+  );
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
 
@@ -427,6 +431,7 @@ function UserForm({
               active,
               accessLaptopReports: accLaptop,
               accessCasierReports: accCasier,
+              accessReception: accReception,
               ...(password ? { password } : {}),
             }),
           })
@@ -441,6 +446,7 @@ function UserForm({
               active,
               accessLaptopReports: accLaptop,
               accessCasierReports: accCasier,
+              accessReception: accReception,
             }),
           });
       const j = await res.json().catch(() => ({}));
@@ -596,7 +602,29 @@ function UserForm({
         )}
         {role === "SUPER_ADMIN" && (
           <div style={{ fontSize: 12, color: K.ink3, fontWeight: 600 }}>
-            Le Super Admin voit tous les rapports (Portables et Casiers).
+            Le Super Admin voit tous les rapports (Portables et Casiers) et a
+            accès à la réception.
+          </div>
+        )}
+
+        {role !== "SUPER_ADMIN" && (
+          <div
+            style={{
+              border: `2px solid ${K.line}`,
+              borderRadius: 14,
+              padding: "12px 14px",
+            }}
+          >
+            <Label>Poste réception</Label>
+            <label style={accessRowStyle}>
+              <input
+                type="checkbox"
+                checked={accReception}
+                onChange={(e) => setAccReception(e.target.checked)}
+                style={{ width: 20, height: 20 }}
+              />
+              🔔 Accès au poste réception
+            </label>
           </div>
         )}
 

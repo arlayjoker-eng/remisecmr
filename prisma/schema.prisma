@@ -38,6 +38,7 @@ model User {
   active              Boolean    @default(true)
   accessLaptopReports Boolean    @default(false) // rapports Portables
   accessCasierReports Boolean    @default(true) // rapports Casiers
+  accessReception     Boolean    @default(false) // poste réception
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
   deliveries          Delivery[]
@@ -66,6 +67,16 @@ model Student {
   deliveries              Delivery[]
   lockerAsA               Locker?      @relation("LockerOfA")
   lockerAsB               Locker?      @relation("LockerOfB")
+  annonce                 Annonce?
+}
+
+// Annonce — préavis de la réception vers le poste de remise des portables.
+model Annonce {
+  id           String   @id @default(cuid())
+  studentId    String   @unique
+  announcedAt  DateTime @default(now())
+  announcedBy  String // userId
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model Locker {

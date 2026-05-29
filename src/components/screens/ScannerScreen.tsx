@@ -41,6 +41,34 @@ export default function ScannerScreen({
   const [now, setNow] = React.useState("");
   const [results, setResults] = React.useState<SearchHit[]>([]);
   const [searching, setSearching] = React.useState(false);
+  const [incoming, setIncoming] = React.useState<
+    {
+      announcedAt: string;
+      student: {
+        studentNumber: string;
+        firstName: string;
+        lastName: string;
+        group: string;
+        level: string;
+      };
+    }[]
+  >([]);
+
+  // Poll des annonces de la réception (mode laptop uniquement)
+  React.useEffect(() => {
+    if (mode !== "laptop") return;
+    const fetchIncoming = async () => {
+      try {
+        const r = await fetch("/api/reception/incoming");
+        if (r.ok) setIncoming(await r.json());
+      } catch {
+        /* réseau */
+      }
+    };
+    fetchIncoming();
+    const t = setInterval(fetchIncoming, 5000);
+    return () => clearInterval(t);
+  }, [mode]);
 
   const pendingCount = queue.length;
   const doneCount = delivered.length;
@@ -625,6 +653,126 @@ export default function ScannerScreen({
             minHeight: 0,
           }}
         >
+          {mode === "laptop" && (
+            <div
+              style={{
+                background:
+                  incoming.length > 0
+                    ? "linear-gradient(135deg, #FFD56B 0%, #FF9A2E 100%)"
+                    : K.surfaceCool,
+                borderRadius: 18,
+                padding: "12px 14px",
+                marginBottom: 14,
+                color: incoming.length > 0 ? "#5B2BC9" : K.ink3,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontFamily: K.display,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: 1.2,
+                  textTransform: "uppercase",
+                  marginBottom: incoming.length > 0 ? 8 : 0,
+                }}
+              >
+                <span>🔔 En route (réception)</span>
+                <span
+                  style={{
+                    background:
+                      incoming.length > 0 ? "#5B2BC9" : "rgba(0,0,0,0.08)",
+                    color: incoming.length > 0 ? "#fff" : K.ink3,
+                    padding: "2px 10px",
+                    borderRadius: 999,
+                    fontSize: 12,
+                  }}
+                >
+                  {incoming.length}
+                </span>
+              </div>
+              {incoming.length === 0 ? null : (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    maxHeight: 220,
+                    overflowY: "auto",
+                  }}
+                >
+                  {incoming.map((it) => (
+                    <div
+                      key={it.student.studentNumber}
+                      onClick={() =>
+                        router.push(`/student/${it.student.studentNumber}`)
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "8px 10px",
+                        background: "rgba(255,255,255,0.55)",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          background: "#5B2BC9",
+                          color: "#fff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 800,
+                          fontSize: 10,
+                          flexShrink: 0,
+                        }}
+                      >
+                        Sec {it.student.level}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontFamily: K.display,
+                            fontWeight: 800,
+                            fontSize: 13,
+                            color: K.ink,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {it.student.firstName} {it.student.lastName}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: K.ink3,
+                            fontWeight: 700,
+                            fontFamily: K.mono,
+                          }}
+                        >
+                          {it.student.studentNumber} ·{" "}
+                          {new Date(it.announcedAt).toLocaleTimeString(
+                            "fr-FR",
+                            { hour: "2-digit", minute: "2-digit" },
+                          )}
+                        </div>
+                      </div>
+                      {Icons.chev({ size: 16, stroke: K.ink3 })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ marginBottom: 14 }}>
             <div
               style={{

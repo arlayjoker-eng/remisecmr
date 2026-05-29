@@ -48,6 +48,9 @@ export async function PATCH(
   if (typeof body.accessCasierReports === "boolean") {
     data.accessCasierReports = body.accessCasierReports;
   }
+  if (typeof body.accessReception === "boolean") {
+    data.accessReception = body.accessReception;
+  }
   if (typeof body.password === "string" && body.password.length > 0) {
     if (body.password.length < 8) {
       return NextResponse.json(
