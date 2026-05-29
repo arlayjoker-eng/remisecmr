@@ -198,6 +198,12 @@ export default function ScannerScreen({
           >
             Changer de mode
           </button>
+          <button
+            onClick={() => router.push("/cadenas")}
+            style={chipBtnStyle}
+          >
+            🔎 Cadenas
+          </button>
           <div
             style={{
               fontFamily: K.mono,

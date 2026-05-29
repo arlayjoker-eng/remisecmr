@@ -35,6 +35,13 @@ const CARDS = [
     accent: K.green,
   },
   {
+    href: "/cadenas",
+    emoji: "🔎",
+    title: "Recherche cadenas",
+    sub: "Trouver un casier par n° de série ou n° de casier.",
+    accent: K.yellow,
+  },
+  {
     href: "/admin/audit",
     emoji: "📋",
     title: "Journal d'audit",
