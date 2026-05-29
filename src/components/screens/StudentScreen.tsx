@@ -20,12 +20,35 @@ export default function StudentScreen({
 }) {
   const router = useRouter();
   const isDelivered = student.laptopStatus === "DELIVERED";
-  const folio = `AE-26-${student.studentNumber}`;
+  const folio = delivery?.folio || `AE-26-${student.studentNumber}`;
+  const [confirmingCancel, setConfirmingCancel] = React.useState(false);
+  const [canceling, setCanceling] = React.useState(false);
+  const [cancelError, setCancelError] = React.useState("");
 
   const onBack = () => router.push("/scan?mode=laptop");
   const onConfirm = () => router.push(`/student/${student.studentNumber}/sign`);
   const openPdf = () =>
     window.open(`/api/deliveries/${folio}/pdf`, "_blank", "noopener");
+
+  const cancelDelivery = async () => {
+    if (canceling) return;
+    setCanceling(true);
+    setCancelError("");
+    try {
+      const res = await fetch(
+        `/api/deliveries/${encodeURIComponent(folio)}/cancel`,
+        { method: "POST" },
+      );
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || "Erreur");
+      router.refresh();
+      setConfirmingCancel(false);
+    } catch (e) {
+      setCancelError((e as Error).message);
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   return (
     <div style={{ display: "flex", height: "100%", background: K.bg }}>
@@ -260,6 +283,78 @@ export default function StudentScreen({
               >
                 Voir le récépissé PDF
               </Btn>
+
+              {cancelError && (
+                <div
+                  style={{
+                    background: K.pinkSoft,
+                    color: "#B2245A",
+                    borderRadius: 12,
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  ✗ {cancelError}
+                </div>
+              )}
+
+              {!confirmingCancel ? (
+                <Btn
+                  kind="warm"
+                  size="md"
+                  full
+                  icon={Icons.refresh({ size: 18, stroke: "#fff" })}
+                  onClick={() => {
+                    setConfirmingCancel(true);
+                    setCancelError("");
+                  }}
+                >
+                  Annuler la remise (corriger)
+                </Btn>
+              ) : (
+                <div
+                  style={{
+                    background: K.pinkSoft,
+                    borderRadius: 14,
+                    padding: "14px 16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "#B2245A",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Annuler la remise et effacer le récépissé PDF ? L&apos;élève
+                    redevient « à remettre ». Cette action est irréversible.
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Btn
+                      kind="cta"
+                      size="md"
+                      disabled={canceling}
+                      onClick={cancelDelivery}
+                      style={{ flex: 1 }}
+                    >
+                      {canceling ? "Annulation…" : "Oui, annuler"}
+                    </Btn>
+                    <Btn
+                      kind="ghost"
+                      size="md"
+                      onClick={() => setConfirmingCancel(false)}
+                      style={{ flex: 1 }}
+                    >
+                      Non
+                    </Btn>
+                  </div>
+                </div>
+              )}
+
               <Btn
                 kind="ghost"
                 size="md"
