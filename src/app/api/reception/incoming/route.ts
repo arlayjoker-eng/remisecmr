@@ -2,8 +2,11 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+// Une prise en charge expire après ce délai (auto-libération).
+const CLAIM_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 // GET — liste des annonces actives (élèves « en route » vers le poste portable).
-// Le poste laptop poll cet endpoint pour mettre à jour son afficheur.
+// Inclut le n° de boîte et l'état de prise en charge (claim).
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
@@ -25,16 +28,24 @@ export async function GET() {
           lastName: true,
           group: true,
           level: true,
+          boxNumber: true,
         },
       },
     },
     orderBy: { announcedAt: "asc" },
   });
 
+  const now = Date.now();
   return NextResponse.json(
-    annonces.map((a) => ({
-      announcedAt: a.announcedAt.toISOString(),
-      student: a.student,
-    })),
+    annonces.map((a) => {
+      const claimActive =
+        !!a.claimedAt && now - a.claimedAt.getTime() < CLAIM_TTL_MS;
+      return {
+        announcedAt: a.announcedAt.toISOString(),
+        student: a.student,
+        claimedBy: claimActive ? a.claimedBy : null,
+        claimedByName: claimActive ? a.claimedByName : null,
+      };
+    }),
   );
 }

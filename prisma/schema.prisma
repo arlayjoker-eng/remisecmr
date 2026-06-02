@@ -72,11 +72,14 @@ model Student {
 
 // Annonce — préavis de la réception vers le poste de remise des portables.
 model Annonce {
-  id           String   @id @default(cuid())
-  studentId    String   @unique
-  announcedAt  DateTime @default(now())
-  announcedBy  String // userId
-  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  studentId     String   @unique
+  announcedAt   DateTime @default(now())
+  announcedBy   String // userId
+  claimedBy     String? // userId de l'opérateur qui prend en charge
+  claimedByName String? // nom affiché aux autres postes
+  claimedAt     DateTime? // pour expirer une prise en charge abandonnée
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model Locker {

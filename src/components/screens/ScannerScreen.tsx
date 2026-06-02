@@ -44,15 +44,19 @@ export default function ScannerScreen({
   const [incoming, setIncoming] = React.useState<
     {
       announcedAt: string;
+      claimedBy: string | null;
+      claimedByName: string | null;
       student: {
         studentNumber: string;
         firstName: string;
         lastName: string;
         group: string;
         level: string;
+        boxNumber: string | null;
       };
     }[]
   >([]);
+  const [myId, setMyId] = React.useState<string>("");
 
   // Poll des annonces de la réception (mode laptop uniquement)
   React.useEffect(() => {
@@ -69,6 +73,35 @@ export default function ScannerScreen({
     const t = setInterval(fetchIncoming, 5000);
     return () => clearInterval(t);
   }, [mode]);
+
+  // Mon identifiant (pour savoir quelles prises en charge sont les miennes)
+  React.useEffect(() => {
+    if (mode !== "laptop") return;
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j?.id && setMyId(j.id))
+      .catch(() => {});
+  }, [mode]);
+
+  // Prendre en charge un élève annoncé puis ouvrir sa fiche.
+  const takeIncoming = async (studentNumber: string) => {
+    try {
+      const r = await fetch("/api/reception/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentNumber }),
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        setScanError(j?.error || "Déjà pris en charge.");
+        setTimeout(() => setScanError(""), 3500);
+        return;
+      }
+    } catch {
+      /* réseau — on ouvre quand même la fiche */
+    }
+    router.push(`/student/${encodeURIComponent(studentNumber)}`);
+  };
 
   const pendingCount = queue.length;
   const doneCount = delivered.length;
@@ -703,71 +736,110 @@ export default function ScannerScreen({
                     overflowY: "auto",
                   }}
                 >
-                  {incoming.map((it) => (
-                    <div
-                      key={it.student.studentNumber}
-                      onClick={() =>
-                        router.push(`/student/${it.student.studentNumber}`)
-                      }
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "8px 10px",
-                        background: "rgba(255,255,255,0.55)",
-                        borderRadius: 10,
-                        cursor: "pointer",
-                      }}
-                    >
+                  {incoming.map((it) => {
+                    const claimedByOther =
+                      !!it.claimedBy && it.claimedBy !== myId;
+                    const mine = !!it.claimedBy && it.claimedBy === myId;
+                    return (
                       <div
+                        key={it.student.studentNumber}
+                        onClick={() =>
+                          claimedByOther
+                            ? undefined
+                            : takeIncoming(it.student.studentNumber)
+                        }
                         style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 8,
-                          background: "#5B2BC9",
-                          color: "#fff",
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          fontWeight: 800,
-                          fontSize: 10,
-                          flexShrink: 0,
+                          gap: 10,
+                          padding: "8px 10px",
+                          background: claimedByOther
+                            ? "rgba(255,255,255,0.30)"
+                            : "rgba(255,255,255,0.55)",
+                          borderRadius: 10,
+                          cursor: claimedByOther ? "not-allowed" : "pointer",
+                          opacity: claimedByOther ? 0.55 : 1,
+                          border: mine
+                            ? "2px solid #5B2BC9"
+                            : "2px solid transparent",
                         }}
                       >
-                        Sec {it.student.level}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
-                            fontFamily: K.display,
+                            width: 32,
+                            height: 32,
+                            borderRadius: 8,
+                            background: "#5B2BC9",
+                            color: "#fff",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             fontWeight: 800,
-                            fontSize: 13,
-                            color: K.ink,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
+                            fontSize: 10,
+                            flexShrink: 0,
                           }}
                         >
-                          {it.student.firstName} {it.student.lastName}
+                          Sec {it.student.level}
                         </div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: K.ink3,
-                            fontWeight: 700,
-                            fontFamily: K.mono,
-                          }}
-                        >
-                          {it.student.studentNumber} ·{" "}
-                          {new Date(it.announcedAt).toLocaleTimeString(
-                            "fr-FR",
-                            { hour: "2-digit", minute: "2-digit" },
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontFamily: K.display,
+                              fontWeight: 800,
+                              fontSize: 13,
+                              color: K.ink,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {it.student.firstName} {it.student.lastName}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: K.ink3,
+                              fontWeight: 700,
+                              fontFamily: K.mono,
+                            }}
+                          >
+                            {it.student.boxNumber
+                              ? `📦 Boîte ${it.student.boxNumber} · `
+                              : ""}
+                            {new Date(it.announcedAt).toLocaleTimeString(
+                              "fr-FR",
+                              { hour: "2-digit", minute: "2-digit" },
+                            )}
+                          </div>
+                          {claimedByOther && (
+                            <div
+                              style={{
+                                fontSize: 10.5,
+                                color: "#C66526",
+                                fontWeight: 800,
+                                marginTop: 2,
+                              }}
+                            >
+                              🔧 En préparation par {it.claimedByName}
+                            </div>
+                          )}
+                          {mine && (
+                            <div
+                              style={{
+                                fontSize: 10.5,
+                                color: "#5B2BC9",
+                                fontWeight: 800,
+                                marginTop: 2,
+                              }}
+                            >
+                              🔧 Vous préparez
+                            </div>
                           )}
                         </div>
+                        {!claimedByOther && Icons.chev({ size: 16, stroke: K.ink3 })}
                       </div>
-                      {Icons.chev({ size: 16, stroke: K.ink3 })}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

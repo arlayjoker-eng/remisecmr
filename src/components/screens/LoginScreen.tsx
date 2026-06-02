@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { K, Btn, Icons, Spinner } from "@/components/ui";
+import { K, Btn, Icons, Spinner, LaptopMascot, PadlockMascot } from "@/components/ui";
 
 const SCHOOL = {
   name: "Collège Mont-Royal",
@@ -42,8 +42,9 @@ export default function LoginScreen() {
     <div
       style={{
         height: "100%",
-        background: K.bg,
-        color: "#fff",
+        background:
+          "linear-gradient(180deg, #FFF7EC 0%, #FDEEDC 45%, #F3E7DA 100%)",
+        color: K.ink,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -53,48 +54,25 @@ export default function LoginScreen() {
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-        {[
-          { x: 6, y: 10, s: 1.6 },
-          { x: 18, y: 78, s: 1.2 },
-          { x: 48, y: 6, s: 2.0 },
-          { x: 92, y: 14, s: 1.0 },
-          { x: 84, y: 64, s: 1.4 },
-          { x: 34, y: 48, s: 1.1 },
-          { x: 72, y: 82, s: 1.6 },
-          { x: 14, y: 34, s: 1.2 },
-        ].map((p, i) => (
-          <svg
-            key={i}
-            width={12 * p.s}
-            height={12 * p.s}
-            viewBox="0 0 12 12"
-            style={{
-              position: "absolute",
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              opacity: 0.35,
-            }}
-          >
-            <path d="M6 0 L7 5 L12 6 L7 7 L6 12 L5 7 L0 6 L5 5 Z" fill="#fff" />
-          </svg>
-        ))}
-      </div>
+      <WarmScene />
 
       <div
         style={{
-          width: 480,
+          width: 460,
           maxWidth: "100%",
-          background: "#fff",
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
           color: K.ink,
-          borderRadius: 36,
-          padding: 36,
-          boxShadow: "0 30px 80px rgba(15,0,60,0.50)",
+          borderRadius: 32,
+          padding: 34,
+          boxShadow:
+            "0 2px 0 rgba(255,255,255,0.8) inset, 0 30px 70px rgba(120,80,30,0.22)",
           display: "flex",
           flexDirection: "column",
           gap: 18,
           position: "relative",
-          zIndex: 2,
+          zIndex: 3,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -126,7 +104,7 @@ export default function LoginScreen() {
                 fontFamily: K.display,
                 fontSize: 11,
                 fontWeight: 800,
-                color: K.violet,
+                color: K.orange,
                 letterSpacing: 1.6,
                 textTransform: "uppercase",
               }}
@@ -230,7 +208,7 @@ export default function LoginScreen() {
         )}
 
         <Btn
-          kind="primary"
+          kind="warm"
           size="lg"
           full
           disabled={!canSubmit}
@@ -301,6 +279,119 @@ function Field({
         {label}
       </div>
       {children}
+    </div>
+  );
+}
+
+// Décor chaleureux et apaisant (inspiration « méditation ») — formes douces,
+// soleil, nuages, collines en couches, et les mascottes de l'app.
+function WarmScene() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        overflow: "hidden",
+      }}
+    >
+      {/* Soleil pâle */}
+      <div
+        style={{
+          position: "absolute",
+          top: "8%",
+          right: "12%",
+          width: 120,
+          height: 120,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, #FFE7A8 0%, #FFD978 60%, rgba(255,217,120,0) 72%)",
+        }}
+      />
+      {/* Nuages */}
+      <Cloud x="14%" y="16%" s={1} />
+      <Cloud x="62%" y="9%" s={0.8} />
+      <Cloud x="40%" y="22%" s={0.6} />
+
+      {/* Collines en couches (bas de l'écran) */}
+      <svg
+        viewBox="0 0 1440 520"
+        preserveAspectRatio="xMidYMax slice"
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100%",
+          height: "62%",
+        }}
+      >
+        <path
+          d="M0 230 Q360 120 720 210 T1440 200 L1440 520 L0 520 Z"
+          fill="#EBD9C4"
+        />
+        <path
+          d="M0 320 Q300 230 640 300 T1440 300 L1440 520 L0 520 Z"
+          fill="#D9C7E8"
+        />
+        <path
+          d="M0 400 Q420 320 820 390 T1440 380 L1440 520 L0 520 Z"
+          fill="#B9A6D6"
+        />
+        <path
+          d="M0 470 Q500 420 980 460 T1440 455 L1440 520 L0 520 Z"
+          fill="#9C86C2"
+        />
+      </svg>
+
+      {/* Mascottes assises sur les collines, de part et d'autre */}
+      <div
+        style={{
+          position: "absolute",
+          left: "7%",
+          bottom: "14%",
+          opacity: 0.96,
+        }}
+      >
+        <LaptopMascot size={150} />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          right: "7%",
+          bottom: "13%",
+          opacity: 0.96,
+        }}
+      >
+        <PadlockMascot size={150} />
+      </div>
+    </div>
+  );
+}
+
+function Cloud({ x, y, s }: { x: string; y: string; s: number }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        transform: `scale(${s})`,
+        display: "flex",
+        alignItems: "flex-end",
+        filter: "drop-shadow(0 8px 14px rgba(150,120,80,0.10))",
+      }}
+    >
+      <div
+        style={{
+          width: 90,
+          height: 44,
+          background: "#FFFDF8",
+          borderRadius: 999,
+          boxShadow:
+            "34px -18px 0 -6px #FFFDF8, 70px 0 0 -4px #FFFDF8",
+        }}
+      />
     </div>
   );
 }

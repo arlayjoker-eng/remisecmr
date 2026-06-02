@@ -153,14 +153,24 @@ export default function ReceptionScreen({
               Annoncer un élève au poste portable
             </div>
           </div>
-          <Btn
-            kind="ghostDark"
-            size="md"
-            icon={Icons.back({ size: 20, stroke: "#fff" })}
-            onClick={() => router.push("/")}
-          >
-            Retour
-          </Btn>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Btn
+              kind="light"
+              size="md"
+              icon={Icons.download({ size: 18 })}
+              onClick={() => window.open("/api/reception/absents", "_blank")}
+            >
+              Absents (Excel)
+            </Btn>
+            <Btn
+              kind="ghostDark"
+              size="md"
+              icon={Icons.back({ size: 20, stroke: "#fff" })}
+              onClick={() => router.push("/")}
+            >
+              Retour
+            </Btn>
+          </div>
         </div>
 
         {/* Caméra + saisie côte à côte */}
