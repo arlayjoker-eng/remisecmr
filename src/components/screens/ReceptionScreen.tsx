@@ -36,14 +36,20 @@ export default function ReceptionScreen({
   const [filterGroup, setFilterGroup] = React.useState<string>("");
   const [filterStatus, setFilterStatus] = React.useState<"" | Status>("");
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const [lastSync, setLastSync] = React.useState<Date | null>(null);
+  const [offline, setOffline] = React.useState(false);
 
   // Poll de la liste complète (5 s)
   const refresh = React.useCallback(async () => {
     try {
       const r = await fetch("/api/reception/students");
-      if (r.ok) setStudents(await r.json());
+      if (r.ok) {
+        setStudents(await r.json());
+        setLastSync(new Date());
+        setOffline(false);
+      }
     } catch {
-      /* réseau */
+      setOffline(true);
     }
   }, []);
   React.useEffect(() => {
@@ -111,8 +117,9 @@ export default function ReceptionScreen({
     <div
       style={{
         height: "100%",
-        background: K.bg,
-        color: "#fff",
+        background: K.bgApp,
+        color: K.ink,
+        animation: "screenIn 0.35s ease both",
         fontFamily: K.body,
         padding: 24,
         overflow: "auto",
@@ -134,7 +141,7 @@ export default function ReceptionScreen({
                 fontFamily: K.display,
                 fontSize: 11,
                 fontWeight: 800,
-                color: "#B589F0",
+                color: K.violet,
                 letterSpacing: 1.6,
                 textTransform: "uppercase",
               }}
@@ -151,6 +158,33 @@ export default function ReceptionScreen({
               }}
             >
               Annoncer un élève au poste portable
+            </div>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                marginTop: 6,
+                fontFamily: K.mono,
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: offline ? "#B2245A" : K.ink3,
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  background: offline ? "#FF4D5E" : "#36C26B",
+                  boxShadow: `0 0 8px ${offline ? "#FF4D5E" : "#36C26B"}`,
+                }}
+              />
+              {offline
+                ? "Hors ligne — reconnexion en cours…"
+                : lastSync
+                  ? `Connecté · mis à jour à ${lastSync.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+                  : "Connexion…"}
             </div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>

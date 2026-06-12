@@ -143,9 +143,9 @@ export default function SignatureScreen({
           onClick={() => router.push(`/student/${student.studentNumber}`)}
           disabled={saving || saved}
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 11,
+            width: 48,
+            height: 48,
+            borderRadius: 13,
             border: `1px solid ${C.lineStrong}`,
             background: "#fff",
             display: "flex",

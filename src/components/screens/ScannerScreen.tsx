@@ -680,7 +680,7 @@ export default function ScannerScreen({
             background: "#fff",
             borderRadius: 32,
             padding: 22,
-            boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+            boxShadow: K.shadowCard,
             display: "flex",
             flexDirection: "column",
             minHeight: 0,
@@ -907,16 +907,41 @@ export default function ScannerScreen({
             {list.length === 0 && (
               <div
                 style={{
-                  padding: "40px 20px",
+                  padding: "36px 20px",
                   textAlign: "center",
                   color: K.ink3,
                   fontSize: 14,
                   fontWeight: 700,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 10,
                 }}
               >
-                {tab === "pending"
-                  ? "Aucun élève en attente."
-                  : "Aucune remise pour l'instant."}
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 22,
+                    background: K.surfaceCool,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 30,
+                  }}
+                >
+                  {tab === "pending" ? "🎉" : "⏳"}
+                </div>
+                <div style={{ fontFamily: K.display, fontSize: 15, color: K.ink2 }}>
+                  {tab === "pending"
+                    ? "Tout est à jour !"
+                    : "Aucune remise pour l'instant"}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 600 }}>
+                  {tab === "pending"
+                    ? "Aucun élève en attente dans la file."
+                    : "Les remises effectuées apparaîtront ici."}
+                </div>
               </div>
             )}
             {list.map((s) => (
@@ -994,13 +1019,15 @@ const chipBtnStyle: React.CSSProperties = {
   background: "#1E3A5F",
   color: "#fff",
   borderRadius: 999,
-  padding: "8px 14px",
+  padding: "12px 18px",
+  minHeight: 44, // taille tactile iPad
   fontFamily: K.display,
   fontWeight: 800,
-  fontSize: 11,
+  fontSize: 12,
   letterSpacing: 0.8,
   textTransform: "uppercase",
   cursor: "pointer",
+  boxShadow: "0 3px 0 rgba(15,25,75,0.25)",
 };
 
 const statusBubbleStyle: React.CSSProperties = {

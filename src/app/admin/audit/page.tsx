@@ -44,8 +44,9 @@ export default async function AuditPage() {
     <div
       style={{
         height: "100%",
-        background: K.bg,
-        color: "#fff",
+        background: K.bgApp,
+        color: K.ink,
+        animation: "screenIn 0.35s ease both",
         fontFamily: K.body,
         padding: 40,
         overflow: "auto",
@@ -66,7 +67,7 @@ export default async function AuditPage() {
                 fontFamily: K.display,
                 fontSize: 11,
                 fontWeight: 800,
-                color: "#B589F0",
+                color: K.violet,
                 letterSpacing: 1.6,
                 textTransform: "uppercase",
               }}
@@ -88,8 +89,9 @@ export default async function AuditPage() {
           <Link
             href="/admin"
             style={{
-              background: "rgba(255,255,255,0.14)",
+              background: "#1E3A5F",
               color: "#fff",
+              boxShadow: "0 4px 0 #0F2540, 0 10px 22px rgba(30,58,95,0.25)",
               borderRadius: 999,
               padding: "12px 22px",
               fontFamily: K.display,
@@ -110,7 +112,7 @@ export default async function AuditPage() {
             color: K.ink,
             borderRadius: 20,
             padding: 8,
-            boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+            boxShadow: K.shadowCard,
             overflow: "auto",
           }}
         >

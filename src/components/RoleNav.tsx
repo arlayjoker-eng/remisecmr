@@ -7,16 +7,18 @@ import { K } from "@/lib/k";
 function chipStyle(active: boolean): React.CSSProperties {
   return {
     border: "none",
-    background: active ? "#fff" : "#1E3A5F",
-    color: active ? K.violetDeep : "#fff",
+    background: active ? K.violetDeep : "#1E3A5F",
+    color: "#fff",
     borderRadius: 999,
-    padding: "8px 14px",
+    padding: "12px 18px",
+    minHeight: 44, // taille tactile iPad
     fontFamily: K.display,
     fontWeight: 800,
-    fontSize: 11,
+    fontSize: 12,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     cursor: active ? "default" : "pointer",
+    boxShadow: "0 3px 0 rgba(15,25,75,0.25)",
   };
 }
 

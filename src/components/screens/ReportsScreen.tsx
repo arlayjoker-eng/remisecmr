@@ -116,11 +116,12 @@ export default function ReportsScreen({
     <div
       style={{
         height: "100%",
-        background: K.bg,
-        color: "#fff",
+        background: K.bgApp,
+        color: K.ink,
         fontFamily: K.body,
         padding: 32,
         overflow: "auto",
+        animation: "screenIn 0.35s ease both",
       }}
     >
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -139,7 +140,7 @@ export default function ReportsScreen({
                 fontFamily: K.display,
                 fontSize: 11,
                 fontWeight: 800,
-                color: "#B589F0",
+                color: K.violet,
                 letterSpacing: 1.6,
                 textTransform: "uppercase",
               }}

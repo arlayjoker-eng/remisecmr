@@ -10,10 +10,32 @@ body {
   padding: 0;
   font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont,
     "SF Pro Text", system-ui, sans-serif;
-  background: #08001f;
+  background: #f6f3ec;
   color: #1b0f45;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Entrée d'écran — fondu doux unifié (thème premium) */
+@keyframes screenIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes rowIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 button {

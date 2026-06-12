@@ -229,10 +229,11 @@ export function Btn({
       border: `2px solid ${K.lineStrong}`,
     },
     ghostDark: {
-      bg: "rgba(255,255,255,0.14)",
+      // Recoloré pour le thème clair premium — navy lisible partout.
+      bg: "#1E3A5F",
       fg: "#fff",
-      shadow: "none",
-      border: "2px solid rgba(255,255,255,0.22)",
+      shadow: "0 4px 0 #0F2540, 0 10px 22px rgba(30,58,95,0.30)",
+      border: "none",
     },
     danger: {
       bg: "#fff",
@@ -316,7 +317,7 @@ export function Pill({ children, tone = "neutral", icon, size = "md" }: PillProp
     warn: { bg: K.yellowSoft, fg: "#8A6A14" },
     danger: { bg: K.pinkSoft, fg: "#B2245A" },
     live: { bg: K.pink, fg: "#fff" },
-    onDark: { bg: "rgba(255,255,255,0.16)", fg: "#fff" },
+    onDark: { bg: "#1E3A5F", fg: "#fff" },
   };
   const t = tones[tone];
   const s =

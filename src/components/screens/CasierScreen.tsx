@@ -161,10 +161,11 @@ export default function CasierScreen({
       style={{
         display: "flex",
         height: "100%",
-        background: K.bg,
-        color: "#fff",
+        background: K.bgApp,
+        color: K.ink,
         fontFamily: K.body,
         position: "relative",
+        animation: "screenIn 0.35s ease both",
       }}
     >
       {/* Gauche : identité + binôme */}
@@ -187,12 +188,13 @@ export default function CasierScreen({
               height: 48,
               borderRadius: 14,
               border: "none",
-              background: "rgba(255,255,255,0.14)",
+              background: "#1E3A5F",
               color: "#fff",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              boxShadow: "0 4px 0 #0F2540, 0 10px 22px rgba(30,58,95,0.25)",
             }}
           >
             {Icons.back({ size: 22, stroke: "#fff" })}
@@ -203,7 +205,7 @@ export default function CasierScreen({
                 fontFamily: K.display,
                 fontSize: 11,
                 fontWeight: 800,
-                color: "#6AE3A8",
+                color: "#1F8A47",
                 letterSpacing: 1.4,
                 textTransform: "uppercase",
               }}
@@ -216,6 +218,7 @@ export default function CasierScreen({
                 fontSize: 22,
                 fontWeight: 800,
                 marginTop: 2,
+                color: K.ink,
               }}
             >
               {correcting
@@ -256,7 +259,7 @@ export default function CasierScreen({
             color: K.ink,
             borderRadius: 28,
             padding: 22,
-            boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+            boxShadow: K.shadowCard,
           }}
         >
           <div
@@ -325,7 +328,7 @@ export default function CasierScreen({
             color: K.ink,
             borderRadius: 28,
             padding: 22,
-            boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+            boxShadow: K.shadowCard,
           }}
         >
           <div
@@ -577,7 +580,7 @@ export default function CasierScreen({
               color: K.ink,
               borderRadius: 28,
               padding: 22,
-              boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+              boxShadow: K.shadowCard,
               display: "flex",
               flexDirection: "column",
               gap: 12,
@@ -783,11 +786,11 @@ export default function CasierScreen({
                 color: K.ink,
                 borderRadius: 24,
                 padding: 20,
-                boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+                boxShadow: K.shadowCard,
               }}
             >
               <KV
-                label="N° de série du loker"
+                label="N° de série du cadenas"
                 value={picked?.serialNumber || "—"}
                 mono
                 icon={<TileIcon kind="locker" />}
@@ -808,16 +811,17 @@ export default function CasierScreen({
                 }}
                 style={{
                   border: "none",
-                  background: "rgba(255,255,255,0.14)",
+                  background: "#1E3A5F",
                   color: "#fff",
                   borderRadius: 14,
-                  padding: "10px 16px",
+                  padding: "14px 18px",
                   fontFamily: K.display,
                   fontWeight: 800,
                   fontSize: 12,
                   letterSpacing: 0.6,
                   textTransform: "uppercase",
                   cursor: "pointer",
+                  boxShadow: "0 4px 0 #0F2540, 0 10px 22px rgba(30,58,95,0.25)",
                 }}
               >
                 ↻ Choisir un autre casier
@@ -847,7 +851,7 @@ export default function CasierScreen({
                 color: K.ink,
                 borderRadius: 24,
                 padding: 20,
-                boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+                boxShadow: K.shadowCard,
                 display: "flex",
                 flexDirection: "column",
                 gap: 12,

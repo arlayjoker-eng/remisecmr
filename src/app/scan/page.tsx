@@ -80,8 +80,9 @@ function ModeSelect({ role }: { role: string }) {
     <div
       style={{
         height: "100%",
-        background: K.bg,
-        color: "#fff",
+        background: K.bgApp,
+        color: K.ink,
+        animation: "screenIn 0.35s ease both",
         fontFamily: K.body,
         display: "flex",
         flexDirection: "column",
@@ -102,7 +103,7 @@ function ModeSelect({ role }: { role: string }) {
               fontFamily: K.display,
               fontSize: 11,
               fontWeight: 800,
-              color: "#B589F0",
+              color: K.violet,
               letterSpacing: 1.6,
               textTransform: "uppercase",
             }}
@@ -112,7 +113,7 @@ function ModeSelect({ role }: { role: string }) {
           <div
             style={{
               fontSize: 12,
-              color: "rgba(255,255,255,0.62)",
+              color: K.ink3,
               fontWeight: 700,
               marginTop: 4,
             }}
@@ -143,7 +144,7 @@ function ModeSelect({ role }: { role: string }) {
             fontFamily: K.display,
             fontSize: 11,
             fontWeight: 800,
-            color: "#B589F0",
+            color: K.violet,
             letterSpacing: 1.6,
             textTransform: "uppercase",
           }}

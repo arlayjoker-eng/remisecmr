@@ -80,8 +80,9 @@ export default function UsersScreen({
     <div
       style={{
         height: "100%",
-        background: K.bg,
-        color: "#fff",
+        background: K.bgApp,
+        color: K.ink,
+        animation: "screenIn 0.35s ease both",
         fontFamily: K.body,
         padding: 40,
         overflow: "auto",
@@ -102,7 +103,7 @@ export default function UsersScreen({
                 fontFamily: K.display,
                 fontSize: 11,
                 fontWeight: 800,
-                color: "#B589F0",
+                color: K.violet,
                 letterSpacing: 1.6,
                 textTransform: "uppercase",
               }}
@@ -148,6 +149,7 @@ export default function UsersScreen({
           <div
             style={{
               background: K.red,
+              color: "#fff",
               borderRadius: 14,
               padding: "12px 18px",
               fontWeight: 700,
@@ -165,7 +167,7 @@ export default function UsersScreen({
             color: K.ink,
             borderRadius: 24,
             padding: 8,
-            boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+            boxShadow: K.shadowCard,
           }}
         >
           <table

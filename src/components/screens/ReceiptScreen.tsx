@@ -29,7 +29,7 @@ export default function ReceiptScreen({
     window.open(`/api/deliveries/${folio}/pdf`, "_blank", "noopener");
 
   return (
-    <div style={{ display: "flex", height: "100%", background: C.bg }}>
+    <div style={{ display: "flex", height: "100%", background: K.bgApp, animation: "screenIn 0.35s ease both" }}>
       <div
         style={{
           width: 520,
@@ -146,7 +146,7 @@ export default function ReceiptScreen({
             <div
               style={{
                 fontSize: 12,
-                color: "rgba(255,255,255,0.7)",
+                color: K.ink3,
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: 0.8,
@@ -158,7 +158,7 @@ export default function ReceiptScreen({
               style={{
                 fontSize: 22,
                 fontWeight: 800,
-                color: "#fff",
+                color: K.ink,
                 fontFamily: K.display,
               }}
             >

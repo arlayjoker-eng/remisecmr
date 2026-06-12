@@ -19,6 +19,37 @@ type Props = {
 
 const READER_ID = "bc-reader";
 
+// Bip de confirmation + vibration au scan réussi (best-effort — silencieux
+// si le navigateur bloque l'audio avant le premier geste utilisateur).
+let audioCtx: AudioContext | null = null;
+function scanFeedback() {
+  try {
+    type W = typeof window & { webkitAudioContext?: typeof AudioContext };
+    const AC = window.AudioContext || (window as W).webkitAudioContext;
+    if (AC) {
+      audioCtx = audioCtx || new AC();
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "sine";
+      o.frequency.value = 1318; // mi aigu — bip court et net
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.28, audioCtx.currentTime + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.16);
+      o.connect(g).connect(audioCtx.destination);
+      o.start();
+      o.stop(audioCtx.currentTime + 0.18);
+    }
+  } catch {
+    /* audio indisponible */
+  }
+  try {
+    navigator.vibrate?.(60);
+  } catch {
+    /* pas de vibration */
+  }
+}
+
 export default function BarcodeScanner({ onDetected, onError }: Props) {
   const detectedRef = React.useRef(onDetected);
   const errorRef = React.useRef(onError);
@@ -63,6 +94,7 @@ export default function BarcodeScanner({ onDetected, onError }: Props) {
           const now = Date.now();
           if (now - lastHit.current < 2500) return; // debounce same card
           lastHit.current = now;
+          scanFeedback();
           detectedRef.current(decodedText.trim());
         },
         () => {

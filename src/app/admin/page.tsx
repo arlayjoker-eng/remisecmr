@@ -63,8 +63,9 @@ export default async function AdminHome() {
     <div
       style={{
         height: "100%",
-        background: K.bg,
-        color: "#fff",
+        background: K.bgApp,
+        color: K.ink,
+        animation: "screenIn 0.35s ease both",
         fontFamily: K.body,
         padding: 48,
         overflow: "auto",
@@ -85,7 +86,7 @@ export default async function AdminHome() {
                 fontFamily: K.display,
                 fontSize: 11,
                 fontWeight: 800,
-                color: "#B589F0",
+                color: K.violet,
                 letterSpacing: 1.6,
                 textTransform: "uppercase",
               }}
@@ -124,7 +125,7 @@ export default async function AdminHome() {
                 color: K.ink,
                 borderRadius: 24,
                 padding: 26,
-                boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+                boxShadow: K.shadowCard,
                 display: "flex",
                 alignItems: "center",
                 gap: 18,

@@ -51,7 +51,14 @@ export default function StudentScreen({
   };
 
   return (
-    <div style={{ display: "flex", height: "100%", background: K.bg }}>
+    <div
+      style={{
+        display: "flex",
+        height: "100%",
+        background: K.bgApp,
+        animation: "screenIn 0.35s ease both",
+      }}
+    >
       {/* Left: identité */}
       <div
         style={{
@@ -482,7 +489,7 @@ function TopBar({
           style={{
             fontSize: 22,
             fontWeight: 800,
-            color: "#fff",
+            color: K.ink,
             letterSpacing: -0.5,
             fontFamily: K.display,
           }}
@@ -492,7 +499,7 @@ function TopBar({
         <div
           style={{
             fontSize: 13,
-            color: "rgba(255,255,255,0.7)",
+            color: K.ink3,
             fontWeight: 600,
             marginTop: 2,
           }}
