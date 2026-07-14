@@ -2,7 +2,6 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { toClientStudent, studentClientSelect } from "@/lib/mappers";
 import { canLaptop, canCasier } from "@/lib/access";
 import { K } from "@/lib/k";
 import ScannerScreen from "@/components/screens/ScannerScreen";
@@ -39,36 +38,42 @@ export default async function ScanPage({
   if (mode === "casier" && !allowCasier) redirect("/scan");
 
   if (mode === "laptop") {
-    const students = await prisma.student.findMany({
-      where: { receivesLaptop: true },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      select: studentClientSelect,
-    });
-    const all = students.map(toClientStudent);
+    // Chargement par scan (CN-001) : le poste ne reçoit que des compteurs,
+    // jamais la liste des élèves.
+    const [pendingCount, deliveredCount] = await Promise.all([
+      prisma.student.count({
+        where: { receivesLaptop: true, laptopStatus: { not: "DELIVERED" } },
+      }),
+      prisma.student.count({
+        where: { receivesLaptop: true, laptopStatus: "DELIVERED" },
+      }),
+    ]);
     return (
       <ScannerScreen
         mode="laptop"
         role={role}
         operatorName={operatorName}
-        queue={all.filter((s) => s.laptopStatus !== "DELIVERED")}
-        delivered={all.filter((s) => s.laptopStatus === "DELIVERED")}
+        pendingCount={pendingCount}
+        deliveredCount={deliveredCount}
       />
     );
   }
 
-  const students = await prisma.student.findMany({
-    where: { receivesLocker: true },
-    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-    select: studentClientSelect,
-  });
-  const all = students.map(toClientStudent);
+  const [pendingCount, deliveredCount] = await Promise.all([
+    prisma.student.count({
+      where: { receivesLocker: true, lockerDeliveredAt: null },
+    }),
+    prisma.student.count({
+      where: { receivesLocker: true, NOT: { lockerDeliveredAt: null } },
+    }),
+  ]);
   return (
     <ScannerScreen
       mode="casier"
       role={role}
       operatorName={operatorName}
-      queue={all.filter((s) => !s.lockerDeliveredAt)}
-      delivered={all.filter((s) => s.lockerDeliveredAt)}
+      pendingCount={pendingCount}
+      deliveredCount={deliveredCount}
     />
   );
 }
