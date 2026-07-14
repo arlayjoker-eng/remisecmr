@@ -13,6 +13,8 @@ type User = {
   accessLaptopReports: boolean;
   accessCasierReports: boolean;
   accessReception: boolean;
+  canLaptopMode?: boolean;
+  canCasierMode?: boolean;
   createdAt: string;
 };
 
@@ -416,6 +418,12 @@ function UserForm({
   const [accReception, setAccReception] = React.useState(
     user?.accessReception ?? false,
   );
+  const [modeLaptop, setModeLaptop] = React.useState(
+    user?.canLaptopMode ?? true,
+  );
+  const [modeCasier, setModeCasier] = React.useState(
+    user?.canCasierMode ?? true,
+  );
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
 
@@ -434,6 +442,8 @@ function UserForm({
               accessLaptopReports: accLaptop,
               accessCasierReports: accCasier,
               accessReception: accReception,
+              canLaptopMode: modeLaptop,
+              canCasierMode: modeCasier,
               ...(password ? { password } : {}),
             }),
           })
@@ -449,6 +459,8 @@ function UserForm({
               accessLaptopReports: accLaptop,
               accessCasierReports: accCasier,
               accessReception: accReception,
+              canLaptopMode: modeLaptop,
+              canCasierMode: modeCasier,
             }),
           });
       const j = await res.json().catch(() => ({}));
@@ -627,6 +639,43 @@ function UserForm({
               />
               🔔 Accès au poste réception
             </label>
+          </div>
+        )}
+
+        {role === "OPERATOR" && (
+          <div
+            style={{
+              border: `2px solid ${K.line}`,
+              borderRadius: 14,
+              padding: "12px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <Label>Postes autorisés (isolation)</Label>
+            <label style={accessRowStyle}>
+              <input
+                type="checkbox"
+                checked={modeLaptop}
+                onChange={(e) => setModeLaptop(e.target.checked)}
+                style={{ width: 20, height: 20 }}
+              />
+              💻 Mode Portable
+            </label>
+            <label style={accessRowStyle}>
+              <input
+                type="checkbox"
+                checked={modeCasier}
+                onChange={(e) => setModeCasier(e.target.checked)}
+                style={{ width: 20, height: 20 }}
+              />
+              🔒 Mode Casier (voit les combinaisons)
+            </label>
+            <div style={{ fontSize: 11.5, color: K.ink3, fontWeight: 600 }}>
+              Un opérateur ne voit que les données du poste autorisé. Les
+              combinaisons de cadenas ne sont accessibles qu&apos;en Mode Casier.
+            </div>
           </div>
         )}
 

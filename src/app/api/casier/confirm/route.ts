@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { canCasier } from "@/lib/access";
 import { NextResponse } from "next/server";
 
 // POST — confirmer l'attribution d'un casier choisi au scan (pas de signature).
@@ -12,6 +13,9 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!canCasier(session.user)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => null);
@@ -43,7 +47,13 @@ export async function POST(req: Request) {
     },
   });
   if (existingLocker) {
-    return NextResponse.json({ ok: true, already: true });
+    return NextResponse.json({
+      ok: true,
+      already: true,
+      lockerNumber: existingLocker.number,
+      serialNumber: existingLocker.serialNumber || "",
+      combinationCode: existingLocker.combinationCode,
+    });
   }
 
   const locker = await prisma.locker.findUnique({
@@ -156,5 +166,11 @@ export async function POST(req: Request) {
       (binome ? ` + binôme ${binome.studentNumber}` : " (sans binôme)"),
   });
 
-  return NextResponse.json({ ok: true });
+  // La combinaison n'est renvoyée qu'ICI, au moment précis de l'attribution.
+  return NextResponse.json({
+    ok: true,
+    lockerNumber: locker.number,
+    serialNumber: locker.serialNumber || "",
+    combinationCode: locker.combinationCode,
+  });
 }

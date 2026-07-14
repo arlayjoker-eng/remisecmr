@@ -18,7 +18,9 @@ export async function parseImport(
 
   if (isXlsx) {
     const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(buf);
+    // exceljs attend un Buffer ; les types @types/node récents exposent
+    // Buffer<ArrayBuffer>, d'où le cast pour lever l'incompatibilité nominale.
+    await wb.xlsx.load(buf as unknown as ArrayBuffer);
     const ws = wb.worksheets[0];
     if (!ws) return [];
 

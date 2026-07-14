@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { canCasier } from "@/lib/access";
 import { NextResponse } from "next/server";
 
 // POST — corriger le casier d'un élève qui en a déjà un (erreur de remise).
@@ -10,6 +11,9 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!canCasier(session.user)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => null);
@@ -180,5 +184,10 @@ export async function POST(req: Request) {
       (binome ? ` · binôme ${binome.studentNumber}` : " · sans binôme"),
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    lockerNumber: newLocker.number,
+    serialNumber: newLocker.serialNumber || "",
+    combinationCode: newLocker.combinationCode,
+  });
 }

@@ -14,6 +14,11 @@ export default async function UsersPage() {
       fullName: true,
       role: true,
       active: true,
+      accessLaptopReports: true,
+      accessCasierReports: true,
+      accessReception: true,
+      canLaptopMode: true,
+      canCasierMode: true,
       createdAt: true,
     },
   });

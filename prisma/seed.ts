@@ -6,9 +6,18 @@ const prisma = new PrismaClient();
 // Minimal seed: only the SUPER_ADMIN account.
 // Students and lockers are loaded later via /admin/import (real CSV).
 async function main() {
-  const email =
-    process.env.SUPER_ADMIN_EMAIL || "agarcia@collegemont-royal.qc.ca";
-  const password = process.env.SUPER_ADMIN_PASSWORD || "Cmr216500";
+  // Sécurité (CN-003) : aucun identifiant par défaut dans le code source.
+  // Les deux variables sont obligatoires — le seed échoue sinon.
+  const email = process.env.SUPER_ADMIN_EMAIL;
+  const password = process.env.SUPER_ADMIN_PASSWORD;
+  if (!email || !password) {
+    throw new Error(
+      "SUPER_ADMIN_EMAIL et SUPER_ADMIN_PASSWORD doivent être définis dans l'environnement avant de lancer le seed.",
+    );
+  }
+  if (password.length < 8) {
+    throw new Error("SUPER_ADMIN_PASSWORD doit faire au moins 8 caractères.");
+  }
   const passwordHash = await bcrypt.hash(password, 10);
 
   await prisma.user.upsert({

@@ -2,6 +2,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { generateReceiptPdf } from "@/lib/pdf";
 import { folioFor } from "@/lib/util";
+import { encryptBytes, encryptString } from "@/lib/crypto";
+import { logAudit } from "@/lib/audit";
+import { canLaptop } from "@/lib/access";
 import { NextResponse } from "next/server";
 
 // POST — remise d'un portable : génère le PDF signé et passe laptopStatus à DELIVERED.
@@ -9,6 +12,9 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!canLaptop(session.user)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => null);
@@ -66,6 +72,9 @@ export async function POST(req: Request) {
     deliveredAt,
   });
 
+  // Chiffrement au repos (CN-004) : la signature et le dernier-4 de la pièce
+  // d'identité ne sont jamais stockés en clair. Le PDF vient d'être généré
+  // ci-dessus à partir des octets en clair.
   const delivery = await prisma.delivery.create({
     data: {
       type: "LAPTOP",
@@ -73,8 +82,8 @@ export async function POST(req: Request) {
       operatorId,
       folio,
       tutorNameTyped: tutorName,
-      tutorIdLast4,
-      signaturePng,
+      tutorIdLast4: encryptString(tutorIdLast4),
+      signaturePng: new Uint8Array(encryptBytes(signaturePng)),
       pdfPath,
       pdfSha256: sha256,
       deliveredAt,
@@ -87,6 +96,15 @@ export async function POST(req: Request) {
 
   // Si l'élève avait été annoncé par la réception, on retire l'annonce.
   await prisma.annonce.deleteMany({ where: { studentId: student.id } });
+
+  // Journal d'audit (CN-009) : l'action la plus sensible du système.
+  await logAudit({
+    userId: operatorId,
+    userName: session.user.name || "Opérateur",
+    action: "laptop.remise",
+    target: `élève ${student.studentNumber}`,
+    details: `remise portable ${student.laptopSerial ?? "?"} · récépissé ${folio}`,
+  });
 
   return NextResponse.json({ folio: delivery.folio, sha256 });
 }

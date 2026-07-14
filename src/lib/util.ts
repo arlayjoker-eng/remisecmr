@@ -12,6 +12,13 @@ export function folioFor(studentNumber: string): string {
   return `AE-26-${studentNumber}`;
 }
 
+// Un folio n'est composé que de lettres, chiffres et tirets. Sert de garde
+// anti-« path traversal » avant toute lecture de fichier basée sur le folio.
+const FOLIO_RE = /^AE-26-[A-Za-z0-9-]{1,40}$/;
+export function isValidFolio(folio: string): boolean {
+  return FOLIO_RE.test(folio);
+}
+
 export function initialsOf(name: string | null | undefined): string {
   return String(name || "")
     .trim()
