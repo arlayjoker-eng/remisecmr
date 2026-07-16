@@ -17,7 +17,9 @@ export default function LoginScreen() {
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
-  const canSubmit = email.trim().length > 3 && password.length >= 1 && !loading;
+  // TODO: volver a 8+ en producción
+  const canSubmit =
+    email.trim().includes("@") && password.length >= 6 && !loading;
 
   const onSubmit = async () => {
     if (!canSubmit) return;
@@ -163,12 +165,12 @@ export default function LoginScreen() {
           </div>
         </div>
 
-        <Field label="Identifiant">
+        <Field label="Courriel">
           <input
             type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="ex. agarcia"
+            placeholder="ex. agarcia@collegemont-royal.qc.ca"
             autoFocus
             autoComplete="username"
             onKeyDown={(e) => {

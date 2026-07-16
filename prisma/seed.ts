@@ -15,8 +15,9 @@ async function main() {
       "SUPER_ADMIN_EMAIL et SUPER_ADMIN_PASSWORD doivent être définis dans l'environnement avant de lancer le seed.",
     );
   }
-  if (password.length < 8) {
-    throw new Error("SUPER_ADMIN_PASSWORD doit faire au moins 8 caractères.");
+  // TODO: volver a 8+ en producción
+  if (password.length < 6) {
+    throw new Error("SUPER_ADMIN_PASSWORD doit faire au moins 6 caractères.");
   }
   const passwordHash = await bcrypt.hash(password, 10);
 
