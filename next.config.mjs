@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 
+const isDev = process.env.NODE_ENV === "development";
+
 // Content-Security-Policy taillée pour ce kiosque :
 //  - html5-qrcode a besoin de la caméra (Permissions-Policy: camera=self)
 //  - la signature au canvas produit des images blob:/data:
@@ -11,7 +13,10 @@ const csp = [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // React Refresh évalue du code à la volée en développement : sans
+  // 'unsafe-eval' le bundle client meurt (EvalError) et l'écran de connexion
+  // reste figé. La production garde la directive stricte, sans 'unsafe-eval'.
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data: blob:",
