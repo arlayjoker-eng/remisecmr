@@ -3,14 +3,14 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { K, Pill, Avatar, Icons, LaptopMascot, PadlockMascot, Btn } from "@/components/ui";
+import { K, Icons, LaptopMascot, PadlockMascot, Btn } from "@/components/ui";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import RoleNav from "@/components/RoleNav";
 import type { ClientStudent } from "@/lib/mappers";
 
 type Props = {
-  queue: ClientStudent[];
-  delivered: ClientStudent[];
+  pendingCount: number;
+  deliveredCount: number;
   operatorName: string;
   mode: "laptop" | "casier";
   role: string;
@@ -26,14 +26,13 @@ type SearchHit = {
 };
 
 export default function ScannerScreen({
-  queue,
-  delivered,
+  pendingCount,
+  deliveredCount,
   operatorName,
   mode,
   role,
 }: Props) {
   const router = useRouter();
-  const [tab, setTab] = React.useState<"pending" | "delivered">("pending");
   const [manual, setManual] = React.useState("");
   const [camError, setCamError] = React.useState("");
   const [scanError, setScanError] = React.useState("");
@@ -103,10 +102,8 @@ export default function ScannerScreen({
     router.push(`/student/${encodeURIComponent(studentNumber)}`);
   };
 
-  const pendingCount = queue.length;
-  const doneCount = delivered.length;
+  const doneCount = deliveredCount;
   const total = pendingCount + doneCount;
-  const list = tab === "pending" ? queue : delivered;
   const progress = total ? Math.round((doneCount / total) * 100) : 0;
 
   React.useEffect(() => {
@@ -164,19 +161,13 @@ export default function ScannerScreen({
     if (!v || busy) return;
     setBusy(true);
     setScanError("");
-    const all = [...queue, ...delivered];
-    let s = all.find(
-      (x) =>
-        x.studentNumber.toLowerCase() === v.toLowerCase() ||
-        `${x.firstName} ${x.lastName}`.toLowerCase() === v.toLowerCase(),
-    );
-    if (!s) {
-      try {
-        const r = await fetch(`/api/students/${encodeURIComponent(v)}`);
-        if (r.ok) s = (await r.json()) as ClientStudent;
-      } catch {
-        /* réseau */
-      }
+    // Chargement par scan (CN-001) : une requête = un élève, jamais le roster.
+    let s: ClientStudent | undefined;
+    try {
+      const r = await fetch(`/api/students/${encodeURIComponent(v)}`);
+      if (r.ok) s = (await r.json()) as ClientStudent;
+    } catch {
+      /* réseau */
     }
     if (!s) {
       setScanError(`Aucun élève trouvé pour « ${v} »`);
@@ -875,83 +866,49 @@ export default function ScannerScreen({
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              padding: 4,
-              gap: 4,
-              background: K.surfaceCool,
-              borderRadius: 14,
-              marginBottom: 8,
-            }}
-          >
-            <Tab active={tab === "pending"} onClick={() => setTab("pending")}>
-              En attente · {pendingCount}
-            </Tab>
-            <Tab
-              active={tab === "delivered"}
-              onClick={() => setTab("delivered")}
-            >
-              Remis · {doneCount}
-            </Tab>
-          </div>
-
+          {/* Chargement par scan (CN-001) : plus de liste complète sur le
+              poste. On scanne ou on cherche un élève à la fois. */}
           <div
             style={{
               flex: 1,
-              overflowY: "auto",
-              margin: "0 -6px",
-              padding: "4px 6px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              textAlign: "center",
+              color: K.ink3,
+              padding: "20px 6px",
             }}
           >
-            {list.length === 0 && (
-              <div
-                style={{
-                  padding: "36px 20px",
-                  textAlign: "center",
-                  color: K.ink3,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 22,
-                    background: K.surfaceCool,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 30,
-                  }}
-                >
-                  {tab === "pending" ? "🎉" : "⏳"}
-                </div>
-                <div style={{ fontFamily: K.display, fontSize: 15, color: K.ink2 }}>
-                  {tab === "pending"
-                    ? "Tout est à jour !"
-                    : "Aucune remise pour l'instant"}
-                </div>
-                <div style={{ fontSize: 12.5, fontWeight: 600 }}>
-                  {tab === "pending"
-                    ? "Aucun élève en attente dans la file."
-                    : "Les remises effectuées apparaîtront ici."}
-                </div>
-              </div>
-            )}
-            {list.map((s) => (
-              <QueueRow
-                key={s.id}
-                student={s}
-                variant={tab}
-                onPick={() => goTo(s.studentNumber)}
-              />
-            ))}
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 22,
+                background: K.surfaceCool,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 30,
+              }}
+            >
+              🔍
+            </div>
+            <div
+              style={{
+                fontFamily: K.display,
+                fontSize: 15,
+                color: K.ink2,
+                fontWeight: 800,
+              }}
+            >
+              Scannez ou cherchez un élève
+            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, maxWidth: 240 }}>
+              La liste complète n'est plus chargée sur le poste. Scannez le code
+              ou tapez un nom / numéro pour ouvrir une fiche.
+            </div>
           </div>
 
           <div
@@ -1228,104 +1185,6 @@ function MiniRing({ value }: { value: number }) {
         strokeDashoffset={c * (1 - value / 100)}
       />
     </svg>
-  );
-}
-
-function Tab({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: "10px 14px",
-        borderRadius: 10,
-        background: active ? "#fff" : "transparent",
-        color: active ? K.ink : K.ink3,
-        fontFamily: K.display,
-        fontWeight: 800,
-        fontSize: 12,
-        letterSpacing: 0.6,
-        textTransform: "uppercase",
-        cursor: "pointer",
-        textAlign: "center",
-        boxShadow: active ? "0 2px 0 rgba(27,15,69,0.08)" : "none",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function QueueRow({
-  student,
-  onPick,
-  variant,
-}: {
-  student: ClientStudent;
-  onPick: () => void;
-  variant: "pending" | "delivered";
-}) {
-  return (
-    <div
-      onClick={onPick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: "12px 10px",
-        borderRadius: 14,
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = K.surfaceCool)}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-    >
-      <Avatar student={student} size={44} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontFamily: K.display,
-            fontSize: 15,
-            fontWeight: 800,
-            color: K.ink,
-            letterSpacing: -0.3,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {student.firstName} {student.lastName}
-        </div>
-        <div
-          style={{
-            fontSize: 11.5,
-            color: K.ink3,
-            marginTop: 2,
-            fontWeight: 700,
-            display: "flex",
-            gap: 8,
-          }}
-        >
-          <span>{student.group}</span>
-          <span style={{ color: K.ink4 }}>·</span>
-          <span style={{ fontFamily: K.mono }}>{student.studentNumber}</span>
-        </div>
-      </div>
-      {variant === "delivered" ? (
-        <Pill tone="success" icon={Icons.check({ size: 12, strokeWidth: 2.5 })}>
-          Remis
-        </Pill>
-      ) : (
-        <div style={{ color: K.ink4 }}>{Icons.chev({ size: 18 })}</div>
-      )}
-    </div>
   );
 }
 

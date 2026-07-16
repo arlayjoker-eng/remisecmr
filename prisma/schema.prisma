@@ -39,9 +39,37 @@ model User {
   accessLaptopReports Boolean    @default(false) // rapports Portables
   accessCasierReports Boolean    @default(true) // rapports Casiers
   accessReception     Boolean    @default(false) // poste réception
+  // Isolation par mode (CN-002) : un opérateur peut être restreint à un seul
+  // poste. Par défaut les deux sont ouverts pour ne pas bloquer l'existant ;
+  // un admin peut retirer un accès. Les responsables/admins ne sont pas limités.
+  canLaptopMode       Boolean    @default(true)
+  canCasierMode       Boolean    @default(true)
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
   deliveries          Delivery[]
+}
+
+// Archive inaltérable des remises annulées (intégrité légale). Le cancel ne
+// détruit plus la preuve : il recopie ici la remise (signature + PDF conservés)
+// puis retire la ligne active pour permettre une nouvelle remise.
+model DeliveryArchive {
+  id                 String       @id @default(cuid())
+  originalDeliveryId String
+  type               DeliveryType
+  studentId          String
+  studentNumber      String
+  operatorId         String
+  folio              String?
+  tutorNameTyped     String?
+  tutorIdLast4       String? // chiffré au repos
+  signaturePng       Bytes? // chiffré au repos
+  pdfPath            String?
+  pdfSha256          String?
+  deliveredAt        DateTime
+  canceledAt         DateTime     @default(now())
+  canceledBy         String
+  canceledByName     String
+  reason             String?
 }
 
 model Student {

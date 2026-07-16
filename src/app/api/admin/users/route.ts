@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { toSchoolEmail } from "@/lib/util";
+import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
 
 const ROLES = ["SUPER_ADMIN", "STAFF_MANAGER", "OPERATOR"];
@@ -34,6 +35,8 @@ export async function GET() {
       accessLaptopReports: true,
       accessCasierReports: true,
       accessReception: true,
+      canLaptopMode: true,
+      canCasierMode: true,
       createdAt: true,
     },
   });
@@ -54,6 +57,8 @@ export async function POST(req: Request) {
   const accessLaptopReports = body?.accessLaptopReports === true;
   const accessCasierReports = body?.accessCasierReports !== false;
   const accessReception = body?.accessReception === true;
+  const canLaptopMode = body?.canLaptopMode !== false;
+  const canCasierMode = body?.canCasierMode !== false;
 
   if (!email || !fullName) {
     return NextResponse.json(
@@ -91,7 +96,16 @@ export async function POST(req: Request) {
       accessLaptopReports,
       accessCasierReports,
       accessReception,
+      canLaptopMode,
+      canCasierMode,
     },
+  });
+  await logAudit({
+    userId: String(g.session!.user.id ?? ""),
+    userName: g.session!.user.name || "?",
+    action: "user.create",
+    target: email,
+    details: `création ${role}${active ? "" : " (inactif)"}`,
   });
   return NextResponse.json({ id: user.id });
 }

@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
 
 const ROLES = ["SUPER_ADMIN", "STAFF_MANAGER", "OPERATOR"];
@@ -51,6 +52,12 @@ export async function PATCH(
   if (typeof body.accessReception === "boolean") {
     data.accessReception = body.accessReception;
   }
+  if (typeof body.canLaptopMode === "boolean") {
+    data.canLaptopMode = body.canLaptopMode;
+  }
+  if (typeof body.canCasierMode === "boolean") {
+    data.canCasierMode = body.canCasierMode;
+  }
   if (typeof body.password === "string" && body.password.length > 0) {
     if (body.password.length < 8) {
       return NextResponse.json(
@@ -91,6 +98,17 @@ export async function PATCH(
       { status: 404 },
     );
   }
+  // Journal : lister les champs modifiés, jamais le hash du mot de passe.
+  const changed = Object.keys(data).map((k) =>
+    k === "passwordHash" ? "mot de passe" : k,
+  );
+  await logAudit({
+    userId: String(g.session!.user.id ?? ""),
+    userName: g.session!.user.name || "?",
+    action: "user.update",
+    target: id,
+    details: `champs modifiés : ${changed.join(", ")}`,
+  });
   return NextResponse.json({ ok: true });
 }
 
@@ -120,5 +138,12 @@ export async function DELETE(
       { status: 409 },
     );
   }
+  await logAudit({
+    userId: String(g.session!.user.id ?? ""),
+    userName: g.session!.user.name || "?",
+    action: "user.delete",
+    target: id,
+    details: "compte supprimé",
+  });
   return NextResponse.json({ ok: true });
 }

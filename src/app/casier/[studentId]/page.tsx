@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { toClientStudent } from "@/lib/mappers";
-import { notFound } from "next/navigation";
+import { canCasier } from "@/lib/access";
+import { notFound, redirect } from "next/navigation";
 import CasierScreen from "@/components/screens/CasierScreen";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,10 @@ export default async function CasierPage({
   const { studentId } = await params;
   const key = decodeURIComponent(studentId);
   const session = await auth();
-  const operatorName = session?.user?.name || "Opérateur";
+  if (!session?.user) redirect("/login");
+  // Isolation par mode (CN-002) : l'écran casier expose des combinaisons.
+  if (!canCasier(session.user)) redirect("/scan");
+  const operatorName = session.user.name || "Opérateur";
 
   const student = await prisma.student.findFirst({
     where: { OR: [{ studentNumber: key }, { id: key }] },
@@ -33,19 +37,20 @@ export default async function CasierPage({
   });
 
   // Casiers disponibles du catalogue — pour l'attribution ET la correction.
+  // Sécurité (CN-002) : PAS de combinaison ici. Le catalogue ne transporte que
+  // n° de casier + n° de série. La combinaison n'est révélée qu'à l'attribution.
   const lockers = await prisma.locker.findMany({
     where: {
       assignedStudentNumberA: null,
       assignedStudentNumberB: null,
       status: "AVAILABLE",
     },
-    select: { number: true, serialNumber: true, combinationCode: true },
+    select: { number: true, serialNumber: true },
     orderBy: { number: "asc" },
   });
   const availableLockers = lockers.map((l) => ({
     number: l.number,
     serialNumber: l.serialNumber || "",
-    combinationCode: l.combinationCode,
   }));
 
   if (existing) {

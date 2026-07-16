@@ -34,10 +34,11 @@ export const K = {
   yellowSoft: "#FFF4D0",
   tealSoft: "#D7F7F7",
   greenSoft: "#DCF5E5",
-  // Fonts
-  display: '"Plus Jakarta Sans", "Sora", system-ui, sans-serif',
-  body: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
-  mono: '"JetBrains Mono", ui-monospace, Menlo, monospace',
+  // Fonts — variables auto-hébergées (next/font), avec repli système.
+  display:
+    'var(--font-jakarta), "Plus Jakarta Sans", "Sora", system-ui, sans-serif',
+  body: 'var(--font-jakarta), "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
+  mono: 'var(--font-mono), "JetBrains Mono", ui-monospace, Menlo, monospace',
   // Compatibility aliases used by some legacy screens
   primary: "#5B2BC9",
   primarySoft: "#EFE7FF",

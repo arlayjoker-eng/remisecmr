@@ -19,7 +19,7 @@ type SearchResult = {
 type LockerOpt = {
   number: string;
   serialNumber: string;
-  combinationCode: string;
+  combinationCode?: string; // absent du catalogue ; présent après attribution
 };
 
 type Props = {
@@ -145,11 +145,11 @@ export default function CasierScreen({
       );
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j?.error || "Échec de la remise.");
+      // La combinaison n'arrive qu'ici, dans la réponse serveur (CN-002).
+      if (j?.combinationCode) {
+        setPicked((p) => (p ? { ...p, combinationCode: j.combinationCode } : p));
+      }
       setSuccess(true);
-      setTimeout(() => {
-        router.push("/scan?mode=casier");
-        router.refresh();
-      }, 2200);
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -716,8 +716,7 @@ export default function CasierScreen({
                             fontFamily: K.mono,
                           }}
                         >
-                          Série {l.serialNumber || "—"} · Code{" "}
-                          {l.combinationCode}
+                          Série {l.serialNumber || "—"}
                         </div>
                       </div>
                       {Icons.chev({ size: 18, stroke: K.ink4 })}
@@ -797,7 +796,7 @@ export default function CasierScreen({
               />
               <KV
                 label="Code du cadenas"
-                value={picked?.combinationCode || "—"}
+                value={picked?.combinationCode || "Révélé à la confirmation"}
                 mono
                 icon={<TileIcon kind="sparkle" />}
               />
@@ -981,8 +980,55 @@ export default function CasierScreen({
             {selectedBinome
               ? ` et ${selectedBinome.firstName} ${selectedBinome.lastName}`
               : ""}
-            . Enregistré dans la base.
+            .
           </div>
+          {picked?.combinationCode && (
+            <div
+              style={{
+                marginTop: 4,
+                padding: "16px 28px",
+                borderRadius: 20,
+                background: "rgba(255,255,255,0.12)",
+                border: "2px dashed rgba(255,255,255,0.35)",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.7)",
+                }}
+              >
+                Code du cadenas — à communiquer à l'élève
+              </div>
+              <div
+                style={{
+                  fontFamily: K.mono,
+                  fontSize: 40,
+                  fontWeight: 800,
+                  color: "#FFD23F",
+                  letterSpacing: 2,
+                  marginTop: 6,
+                }}
+              >
+                {picked.combinationCode}
+              </div>
+            </div>
+          )}
+          <Btn
+            kind="light"
+            size="lg"
+            icon={Icons.check({ size: 22 })}
+            onClick={() => {
+              router.push("/scan?mode=casier");
+              router.refresh();
+            }}
+          >
+            Terminé — retour au scanner
+          </Btn>
         </div>
       )}
     </div>

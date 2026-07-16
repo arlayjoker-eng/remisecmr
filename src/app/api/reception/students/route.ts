@@ -1,14 +1,18 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { hasReceptionAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
 
 // GET — liste complète des élèves recevant un portable, avec statut.
 // Statut : PENDING | EN_ROUTE (annoncé) | DELIVERED (remis).
-// Utilisé par le tableau de bord du poste réception.
+// Utilisé par le tableau de bord du poste réception (accès réservé).
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!(await hasReceptionAccess(session.user))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const students = await prisma.student.findMany({

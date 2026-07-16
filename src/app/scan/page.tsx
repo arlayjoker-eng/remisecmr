@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { toClientStudent } from "@/lib/mappers";
+import { canLaptop, canCasier } from "@/lib/access";
 import { K } from "@/lib/k";
 import ScannerScreen from "@/components/screens/ScannerScreen";
 import RoleNav from "@/components/RoleNav";
@@ -20,62 +20,95 @@ export default async function ScanPage({
   const operatorName = session.user.name || "Opérateur";
   const role = session.user.role || "OPERATOR";
 
+  const allowLaptop = canLaptop(session.user);
+  const allowCasier = canCasier(session.user);
+
   const { mode: modeParam } = await searchParams;
   const mode =
     modeParam === "laptop" || modeParam === "casier" ? modeParam : null;
 
-  if (!mode) return <ModeSelect role={role} />;
+  if (!mode)
+    return (
+      <ModeSelect role={role} allowLaptop={allowLaptop} allowCasier={allowCasier} />
+    );
+
+  // Isolation par mode (CN-002) : l'accès direct par URL est refusé si le poste
+  // n'est pas accordé à cet opérateur.
+  if (mode === "laptop" && !allowLaptop) redirect("/scan");
+  if (mode === "casier" && !allowCasier) redirect("/scan");
 
   if (mode === "laptop") {
-    const students = await prisma.student.findMany({
-      where: { receivesLaptop: true },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-    });
-    const all = students.map(toClientStudent);
+    // Chargement par scan (CN-001) : le poste ne reçoit que des compteurs,
+    // jamais la liste des élèves.
+    const [pendingCount, deliveredCount] = await Promise.all([
+      prisma.student.count({
+        where: { receivesLaptop: true, laptopStatus: { not: "DELIVERED" } },
+      }),
+      prisma.student.count({
+        where: { receivesLaptop: true, laptopStatus: "DELIVERED" },
+      }),
+    ]);
     return (
       <ScannerScreen
         mode="laptop"
         role={role}
         operatorName={operatorName}
-        queue={all.filter((s) => s.laptopStatus !== "DELIVERED")}
-        delivered={all.filter((s) => s.laptopStatus === "DELIVERED")}
+        pendingCount={pendingCount}
+        deliveredCount={deliveredCount}
       />
     );
   }
 
-  const students = await prisma.student.findMany({
-    where: { receivesLocker: true },
-    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-  });
-  const all = students.map(toClientStudent);
+  const [pendingCount, deliveredCount] = await Promise.all([
+    prisma.student.count({
+      where: { receivesLocker: true, lockerDeliveredAt: null },
+    }),
+    prisma.student.count({
+      where: { receivesLocker: true, NOT: { lockerDeliveredAt: null } },
+    }),
+  ]);
   return (
     <ScannerScreen
       mode="casier"
       role={role}
       operatorName={operatorName}
-      queue={all.filter((s) => !s.lockerDeliveredAt)}
-      delivered={all.filter((s) => s.lockerDeliveredAt)}
+      pendingCount={pendingCount}
+      deliveredCount={deliveredCount}
     />
   );
 }
 
-function ModeSelect({ role }: { role: string }) {
+function ModeSelect({
+  role,
+  allowLaptop,
+  allowCasier,
+}: {
+  role: string;
+  allowLaptop: boolean;
+  allowCasier: boolean;
+}) {
   const cards = [
-    {
+    allowLaptop && {
       href: "/scan?mode=laptop",
       emoji: "💻",
       title: "Mode Portable",
       sub: "Remise des portables avec signature du parent.",
       grad: "linear-gradient(160deg, #B589F0 0%, #5B2BC9 100%)",
     },
-    {
+    allowCasier && {
       href: "/scan?mode=casier",
       emoji: "🔒",
       title: "Mode Casier",
       sub: "Attribution des casiers et cadenas (sans signature).",
       grad: "linear-gradient(160deg, #6AE3A8 0%, #2BB070 100%)",
     },
-  ];
+  ].filter(Boolean) as {
+    href: string;
+    emoji: string;
+    title: string;
+    sub: string;
+    grad: string;
+  }[];
   return (
     <div
       style={{

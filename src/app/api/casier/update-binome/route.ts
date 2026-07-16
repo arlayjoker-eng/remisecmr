@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { canCasier } from "@/lib/access";
 import { NextResponse } from "next/server";
 
 // POST — modifier seulement le binôme d'un casier déjà attribué (correction).
@@ -11,6 +12,9 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!canCasier(session.user)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => null);

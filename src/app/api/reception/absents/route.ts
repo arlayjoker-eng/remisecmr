@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { hasReceptionAccess } from "@/lib/access";
 import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 
@@ -9,6 +10,9 @@ export async function GET() {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!(await hasReceptionAccess(session.user))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const students = await prisma.student.findMany({

@@ -1,5 +1,20 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+
+// Auto-hébergées par Next au build (aucun CDN au runtime — CN-008).
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["500", "700"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "RemiseCMR — Collège Mont-Royal",
@@ -32,19 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="fr" className={`${jakarta.variable} ${jetbrains.variable}`}>
       <body>
         <div className="kiosk-root">{children}</div>
       </body>

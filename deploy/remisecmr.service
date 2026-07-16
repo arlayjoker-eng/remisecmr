@@ -1,0 +1,42 @@
+# RemiseCMR — unité systemd (alternative à pm2).
+#
+# Installation :
+#   sudo cp deploy/remisecmr.service /etc/systemd/system/remisecmr.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now remisecmr
+#   sudo systemctl status remisecmr
+#
+# Les secrets sont dans /etc/remisecmr/remisecmr.env (chmod 600, hors dépôt) :
+#   AUTH_SECRET, ENCRYPTION_KEY, DATABASE_URL, PDF_DIR, AUTH_TRUST_HOST,
+#   SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD
+
+[Unit]
+Description=RemiseCMR (Next.js kiosk - Collège Mont-Royal)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/remisecmr
+EnvironmentFile=/etc/remisecmr/remisecmr.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000
+Restart=always
+RestartSec=4
+
+# Compte de service dédié, sans privilèges.
+User=remisecmr
+Group=remisecmr
+
+# Durcissement.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+# Seul emplacement inscriptible : la base SQLite et les PDF signés.
+ReadWritePaths=/var/lib/remisecmr
+
+[Install]
+WantedBy=multi-user.target

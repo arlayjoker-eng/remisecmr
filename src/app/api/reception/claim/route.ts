@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { canLaptop } from "@/lib/access";
 import { NextResponse } from "next/server";
 
 const CLAIM_TTL_MS = 5 * 60 * 1000;
@@ -11,6 +12,9 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!canLaptop(session.user)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const myId = String(session.user.id ?? "");
   const myName = session.user.name || "Opérateur";
@@ -68,6 +72,9 @@ export async function DELETE(req: Request) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!canLaptop(session.user)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const myId = String(session.user.id ?? "");
   const studentNumber = String(

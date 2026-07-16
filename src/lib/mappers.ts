@@ -1,6 +1,31 @@
 // Maps Prisma rows to the plain shapes the screens expect.
-import type { Student } from "@prisma/client";
+import type { Prisma, Student } from "@prisma/client";
 import { hueFromName } from "./util";
+
+// Sélection Prisma partagée : la SEULE liste de colonnes qui a le droit
+// d'arriver au navigateur. Exclut explicitement assignedCombinationCode,
+// assignedLockerNumber sensibles ? non — le numéro de casier est ok, mais la
+// combinaison et petitCasier restent côté serveur.
+export const studentClientSelect = {
+  id: true,
+  studentNumber: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  group: true,
+  level: true,
+  boxNumber: true,
+  laptopSerial: true,
+  laptopModel: true,
+  laptopStatus: true,
+  receivesLaptop: true,
+  receivesLocker: true,
+  assignedLockerNumber: true,
+  lockerDeliveredAt: true,
+} satisfies Prisma.StudentSelect;
+
+// Le type d'une ligne réduite à cette sélection.
+type StudentClientRow = Pick<Student, keyof typeof studentClientSelect>;
 
 export type ClientStudent = {
   id: string;
@@ -17,12 +42,15 @@ export type ClientStudent = {
   receivesLaptop: boolean;
   receivesLocker: boolean;
   assignedLockerNumber: string | null;
-  assignedCombinationCode: string | null;
+  // NOTE sécurité (CN-002) : la combinaison du cadenas ne fait PAS partie de
+  // ce DTO. Elle ne doit jamais transiter par le navigateur en bloc ni dans le
+  // flux « laptop ». Elle est servie une par une, au moment de la remise, via
+  // l'endpoint casier authentifié + journalisé.
   lockerDeliveredAt: string | null;
   color: number;
 };
 
-export function toClientStudent(s: Student): ClientStudent {
+export function toClientStudent(s: StudentClientRow): ClientStudent {
   return {
     id: s.id,
     studentNumber: s.studentNumber,
@@ -38,7 +66,6 @@ export function toClientStudent(s: Student): ClientStudent {
     receivesLaptop: s.receivesLaptop,
     receivesLocker: s.receivesLocker,
     assignedLockerNumber: s.assignedLockerNumber,
-    assignedCombinationCode: s.assignedCombinationCode,
     lockerDeliveredAt: s.lockerDeliveredAt
       ? s.lockerDeliveredAt.toISOString()
       : null,
