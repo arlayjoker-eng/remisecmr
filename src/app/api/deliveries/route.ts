@@ -64,6 +64,8 @@ export async function POST(req: Request) {
       boxNumber: student.boxNumber,
       laptopModel: student.laptopModel,
       laptopSerial: student.laptopSerial,
+      chargerSerial: student.chargerSerial,
+      stylusSerial: student.stylusSerial,
     },
     tutorName,
     tutorIdLast4,

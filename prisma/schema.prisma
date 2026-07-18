@@ -82,6 +82,8 @@ model Student {
   level                   String // "1".."5"
   boxNumber               String?
   laptopSerial            String?
+  chargerSerial           String? // source : cmr-device-manager
+  stylusSerial            String? // source : cmr-device-manager
   laptopModel             String?
   laptopStatus            LaptopStatus @default(PENDING)
   receivesLaptop          Boolean      @default(false)

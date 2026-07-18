@@ -16,6 +16,8 @@ export const studentClientSelect = {
   level: true,
   boxNumber: true,
   laptopSerial: true,
+  chargerSerial: true,
+  stylusSerial: true,
   laptopModel: true,
   laptopStatus: true,
   receivesLaptop: true,
@@ -37,6 +39,8 @@ export type ClientStudent = {
   level: string;
   boxNumber: string | null;
   laptopSerial: string | null;
+  chargerSerial: string | null;
+  stylusSerial: string | null;
   laptopModel: string | null;
   laptopStatus: string;
   receivesLaptop: boolean;
@@ -61,6 +65,8 @@ export function toClientStudent(s: StudentClientRow): ClientStudent {
     level: s.level,
     boxNumber: s.boxNumber,
     laptopSerial: s.laptopSerial,
+    chargerSerial: s.chargerSerial,
+    stylusSerial: s.stylusSerial,
     laptopModel: s.laptopModel,
     laptopStatus: s.laptopStatus,
     receivesLaptop: s.receivesLaptop,

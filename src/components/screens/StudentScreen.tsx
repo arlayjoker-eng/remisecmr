@@ -263,8 +263,20 @@ export default function StudentScreen({
           }}
         >
           <KV
-            label="Numéro de série"
+            label="Série du portable"
             value={student.laptopSerial || "—"}
+            mono
+            icon={<TileIcon kind="laptop" />}
+          />
+          <KV
+            label="Série du chargeur"
+            value={student.chargerSerial || "—"}
+            mono
+            icon={<TileIcon kind="laptop" />}
+          />
+          <KV
+            label="Série du crayon"
+            value={student.stylusSerial || "—"}
             mono
             icon={<TileIcon kind="laptop" />}
           />
