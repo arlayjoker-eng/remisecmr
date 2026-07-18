@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { canLaptop, canCasier } from "@/lib/access";
+import { canLaptop, canCasier, hasReceptionAccess } from "@/lib/access";
 import { K } from "@/lib/k";
 import ScannerScreen from "@/components/screens/ScannerScreen";
 import RoleNav from "@/components/RoleNav";
@@ -22,15 +22,25 @@ export default async function ScanPage({
 
   const allowLaptop = canLaptop(session.user);
   const allowCasier = canCasier(session.user);
+  const allowReception = await hasReceptionAccess(session.user);
 
   const { mode: modeParam } = await searchParams;
   const mode =
     modeParam === "laptop" || modeParam === "casier" ? modeParam : null;
 
-  if (!mode)
+  if (!mode) {
+    // Réception est un poste indépendant : un opérateur qui n'a QUE l'accès
+    // réception entre directement, sans écran de choix de mode.
+    if (allowReception && !allowLaptop && !allowCasier) redirect("/reception");
     return (
-      <ModeSelect role={role} allowLaptop={allowLaptop} allowCasier={allowCasier} />
+      <ModeSelect
+        role={role}
+        allowLaptop={allowLaptop}
+        allowCasier={allowCasier}
+        allowReception={allowReception}
+      />
     );
+  }
 
   // Isolation par mode (CN-002) : l'accès direct par URL est refusé si le poste
   // n'est pas accordé à cet opérateur.
@@ -82,10 +92,12 @@ function ModeSelect({
   role,
   allowLaptop,
   allowCasier,
+  allowReception,
 }: {
   role: string;
   allowLaptop: boolean;
   allowCasier: boolean;
+  allowReception: boolean;
 }) {
   const cards = [
     allowLaptop && {
@@ -101,6 +113,13 @@ function ModeSelect({
       title: "Mode Casier",
       sub: "Attribution des casiers et cadenas (sans signature).",
       grad: "linear-gradient(160deg, #6AE3A8 0%, #2BB070 100%)",
+    },
+    allowReception && {
+      href: "/reception",
+      emoji: "🔔",
+      title: "Poste réception",
+      sub: "Annoncer les élèves vers le poste des portables.",
+      grad: "linear-gradient(160deg, #FFC24B 0%, #FF8A1E 100%)",
     },
   ].filter(Boolean) as {
     href: string;
@@ -196,7 +215,15 @@ function ModeSelect({
           Choisissez le mode
         </div>
       </div>
-      <div style={{ display: "flex", gap: 22 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 22,
+          flexWrap: "wrap",
+          justifyContent: "center",
+          maxWidth: 1020,
+        }}
+      >
         {cards.map((c) => (
           <Link
             key={c.href}
