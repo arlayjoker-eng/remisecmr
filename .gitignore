@@ -18,3 +18,9 @@ backups
 
 # generated PDFs
 pdfs
+
+# Local tooling / generated (no producción)
+graphify-out/
+.claude/
+.claudeignore
+CLAUDE.md

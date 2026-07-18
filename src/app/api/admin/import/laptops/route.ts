@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { parseImport } from "@/lib/import-parse";
+import { pickField as pick } from "@/lib/import-alias";
+import { levelFromGrado } from "@/lib/level";
 import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
 
@@ -57,18 +59,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const level = (new URL(req.url).searchParams.get("level") || "").trim();
-  if (!["1", "2", "3", "4", "5"].includes(level)) {
-    return NextResponse.json(
-      {
-        ok: false,
-        total: 0,
-        imported: 0,
-        errors: ["Sélectionnez le niveau (Sec 1 à 5) avant d'importer."],
-      },
-      { status: 422 },
-    );
-  }
+  // Niveau du sélecteur : sert de REPLI si une ligne n'a pas de niveau propre.
+  // Le niveau par ligne (dérivé de « grado ») est prioritaire.
+  const fallbackLevel = (new URL(req.url).searchParams.get("level") || "").trim();
 
   const rows = await parseImport(req);
   if (rows.length === 0) {
@@ -89,18 +82,21 @@ export async function POST(req: Request) {
     lastName: string;
     email: string;
     group: string;
+    level: string;
     boxNumber: string | null;
     laptopSerial: string | null;
     laptopModel: string | null;
+    chargerSerial: string | null;
+    stylusSerial: string | null;
   }[] = [];
 
   rows.forEach((row, i) => {
     const line = i + 2; // ligne 1 = en-têtes
-    const studentNumber = (row.student_number || "").trim();
-    const firstName = (row.first_name || "").trim();
-    const lastName = (row.last_name || "").trim();
-    const email = (row.email || "").trim();
-    const group = (row.group || "").trim();
+    const studentNumber = pick(row, "student_number");
+    const firstName = pick(row, "first_name");
+    const lastName = pick(row, "last_name");
+    const email = pick(row, "email");
+    const group = pick(row, "group");
 
     if (!studentNumber) {
       errors.push(`Ligne ${line}: numéro d'élève manquant`);
@@ -118,15 +114,31 @@ export async function POST(req: Request) {
       errors.push(`Ligne ${line}: groupe manquant (${studentNumber})`);
       return;
     }
+
+    // Niveau : "Sec 1" → "1" (colonne grado/niveau), sinon chiffre du groupe,
+    // sinon le sélecteur. Doit finir en "1".."5".
+    const levelSrc = pick(row, "level_src");
+    let level = levelFromGrado(levelSrc, group);
+    if (!["1", "2", "3", "4", "5"].includes(level)) level = fallbackLevel;
+    if (!["1", "2", "3", "4", "5"].includes(level)) {
+      errors.push(
+        `Ligne ${line}: niveau introuvable (${studentNumber}) — choisissez le niveau (Sec 1 à 5) au-dessus.`,
+      );
+      return;
+    }
+
     valid.push({
       studentNumber,
       firstName,
       lastName,
       email,
       group,
-      boxNumber: (row.box_number || "").trim() || null,
-      laptopSerial: (row.laptop_serial || "").trim() || null,
-      laptopModel: (row.laptop_model || "").trim() || null,
+      level,
+      boxNumber: pick(row, "box_number") || null,
+      laptopSerial: pick(row, "laptop_serial") || null,
+      laptopModel: pick(row, "laptop_model") || null,
+      chargerSerial: pick(row, "charger_serial") || null,
+      stylusSerial: pick(row, "stylus_serial") || null,
     });
   });
 
@@ -148,10 +160,12 @@ export async function POST(req: Request) {
             lastName: v.lastName,
             email: v.email,
             group: v.group,
-            level,
+            level: v.level,
             boxNumber: v.boxNumber,
             laptopSerial: v.laptopSerial,
             laptopModel: v.laptopModel,
+            chargerSerial: v.chargerSerial,
+            stylusSerial: v.stylusSerial,
             receivesLaptop: true,
           },
           create: {
@@ -160,10 +174,12 @@ export async function POST(req: Request) {
             lastName: v.lastName,
             email: v.email,
             group: v.group,
-            level,
+            level: v.level,
             boxNumber: v.boxNumber,
             laptopSerial: v.laptopSerial,
             laptopModel: v.laptopModel,
+            chargerSerial: v.chargerSerial,
+            stylusSerial: v.stylusSerial,
             receivesLaptop: true,
             laptopStatus: "PENDING",
           },

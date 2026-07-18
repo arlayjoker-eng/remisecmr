@@ -285,8 +285,18 @@ export default function ReceiptScreen({
             <DocField label="Boîte N°" value={student.boxNumber || "—"} mono />
             <DocField label="Modèle" value={student.laptopModel || "—"} />
             <DocField
-              label="Numéro de série"
+              label="Série du portable"
               value={student.laptopSerial || "—"}
+              mono
+            />
+            <DocField
+              label="Série du chargeur"
+              value={student.chargerSerial || "—"}
+              mono
+            />
+            <DocField
+              label="Série du crayon"
+              value={student.stylusSerial || "—"}
               mono
             />
           </div>

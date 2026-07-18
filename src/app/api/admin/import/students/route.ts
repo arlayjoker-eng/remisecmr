@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { parseImport } from "@/lib/import-parse";
+import { pickField } from "@/lib/import-alias";
+import { levelFromGrado } from "@/lib/level";
 import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
 
@@ -19,18 +21,8 @@ export async function POST(req: Request) {
   }
 
   const sp = new URL(req.url).searchParams;
-  const level = (sp.get("level") || "").trim();
-  if (!["1", "2", "3", "4", "5"].includes(level)) {
-    return NextResponse.json(
-      {
-        ok: false,
-        total: 0,
-        imported: 0,
-        errors: ["Sélectionnez le niveau (Sec 1 à 5) avant d'importer."],
-      },
-      { status: 422 },
-    );
-  }
+  // Niveau du sélecteur : REPLI si une ligne n'a pas de niveau propre (grado).
+  const fallbackLevel = (sp.get("level") || "").trim();
   const withLaptop = sp.get("withLaptop") !== "0";
   const withLocker = sp.get("withLocker") !== "0";
   if (!withLaptop && !withLocker) {
@@ -66,23 +58,28 @@ export async function POST(req: Request) {
     firstName: string;
     lastName: string;
     group: string;
+    level: string;
     email: string | null;
     boxNumber: string | null;
     laptopSerial: string | null;
     laptopModel: string | null;
+    chargerSerial: string | null;
+    stylusSerial: string | null;
   };
   const valid: Row[] = [];
 
   rows.forEach((row, i) => {
     const line = i + 2;
-    const studentNumber = (row.student_number || "").trim();
-    const firstName = (row.first_name || "").trim();
-    const lastName = (row.last_name || "").trim();
-    const group = (row.group || "").trim();
-    const email = (row.email || "").trim() || null;
-    const boxNumber = (row.box_number || "").trim() || null;
-    const laptopSerial = (row.laptop_serial || "").trim() || null;
-    const laptopModel = (row.laptop_model || "").trim() || null;
+    const studentNumber = pickField(row, "student_number");
+    const firstName = pickField(row, "first_name");
+    const lastName = pickField(row, "last_name");
+    const group = pickField(row, "group");
+    const email = pickField(row, "email") || null;
+    const boxNumber = pickField(row, "box_number") || null;
+    const laptopSerial = pickField(row, "laptop_serial") || null;
+    const laptopModel = pickField(row, "laptop_model") || null;
+    const chargerSerial = pickField(row, "charger_serial") || null;
+    const stylusSerial = pickField(row, "stylus_serial") || null;
 
     if (!studentNumber) {
       errors.push(`Ligne ${line}: numéro d'élève manquant`);
@@ -96,15 +93,27 @@ export async function POST(req: Request) {
       errors.push(`Ligne ${line}: groupe manquant (${studentNumber})`);
       return;
     }
+    // Niveau : « Sec 1 » → « 1 » (par ligne), sinon chiffre du groupe, sinon sélecteur.
+    let level = levelFromGrado(pickField(row, "level_src"), group);
+    if (!["1", "2", "3", "4", "5"].includes(level)) level = fallbackLevel;
+    if (!["1", "2", "3", "4", "5"].includes(level)) {
+      errors.push(
+        `Ligne ${line}: niveau introuvable (${studentNumber}) — choisissez le niveau (Sec 1 à 5) au-dessus.`,
+      );
+      return;
+    }
     valid.push({
       studentNumber,
       firstName,
       lastName,
       group,
+      level,
       email,
       boxNumber,
       laptopSerial,
       laptopModel,
+      chargerSerial,
+      stylusSerial,
     });
   });
 
@@ -122,7 +131,7 @@ export async function POST(req: Request) {
           firstName: v.firstName,
           lastName: v.lastName,
           group: v.group,
-          level,
+          level: v.level,
         };
         if (v.email) update.email = v.email;
         if (withLaptop) {
@@ -130,6 +139,8 @@ export async function POST(req: Request) {
           if (v.boxNumber !== null) update.boxNumber = v.boxNumber;
           if (v.laptopSerial !== null) update.laptopSerial = v.laptopSerial;
           if (v.laptopModel !== null) update.laptopModel = v.laptopModel;
+          if (v.chargerSerial !== null) update.chargerSerial = v.chargerSerial;
+          if (v.stylusSerial !== null) update.stylusSerial = v.stylusSerial;
         }
         if (withLocker) update.receivesLocker = true;
 
@@ -138,7 +149,7 @@ export async function POST(req: Request) {
           firstName: v.firstName,
           lastName: v.lastName,
           group: v.group,
-          level,
+          level: v.level,
           email: v.email,
         };
         if (withLaptop) {
@@ -147,6 +158,8 @@ export async function POST(req: Request) {
           create.boxNumber = v.boxNumber;
           create.laptopSerial = v.laptopSerial;
           create.laptopModel = v.laptopModel;
+          create.chargerSerial = v.chargerSerial;
+          create.stylusSerial = v.stylusSerial;
         }
         if (withLocker) create.receivesLocker = true;
 
