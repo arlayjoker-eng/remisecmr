@@ -1,0 +1,20 @@
+# Sesión de Playwright — NUNCA debe commitearse (contiene cookies de sesión)
+sesion.json
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+*.log.*
+
+# Estado entre corridas
+estado.json
+
+# Volcados de discover.js (pueden contener datos de la cuenta)
+discovery/
+
+# Dependencias
+node_modules

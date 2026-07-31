@@ -1,0 +1,34 @@
+{
+  "baseUrl": "https://www.revolico.com",
+  "paths": {
+    "auth": "/auth",
+    "signin": "/auth/signin",
+    "account": "/account",
+    "manageTemplate": "/item/{id}/_/manage"
+  },
+  "adIdPattern": "/item/(\\d+)",
+  "selectors": {
+    "loginIndicator": ["a[href*='/account']", "a[href*='logout']", "text=Cerrar sesión"],
+    "renewButton": [
+      "[data-action='renew']",
+      "button:has-text('Renovar')",
+      "a:has-text('Renovar')",
+      "input[type='submit'][value*='Renovar' i]",
+      "[role='button']:has-text('Renovar')"
+    ],
+    "confirmButton": ["button:has-text('Confirmar')", "button:has-text('Aceptar')", "button:has-text('Sí')"],
+    "captchaIndicator": ["iframe[src*='captcha']", ".g-recaptcha", "[class*='captcha']"],
+    "successIndicator": ["text=renovado", "text=actualizado", "text=éxito"],
+    "cooldownIndicator": ["text=/puedes renovar/i", "text=/horas/i", "text=/disponible en/i"]
+  },
+  "timing": {
+    "betweenAdsMs": [8000, 20000],
+    "afterNavigationMs": [1500, 3500],
+    "afterClickMs": [2500, 5000]
+  },
+  "limits": {
+    "maxAdsPerRun": 25,
+    "navigationTimeoutMs": 30000,
+    "renewButtonWaitMs": 8000
+  }
+}
