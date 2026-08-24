@@ -24,6 +24,7 @@ export async function GET() {
       group: true,
       level: true,
       laptopStatus: true,
+      appointmentTime: true,
       annonce: { select: { announcedAt: true } },
     },
     orderBy: [{ group: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
@@ -36,6 +37,7 @@ export async function GET() {
       lastName: s.lastName,
       group: s.group,
       level: s.level,
+      appointmentTime: s.appointmentTime,
       status:
         s.laptopStatus === "DELIVERED"
           ? "DELIVERED"

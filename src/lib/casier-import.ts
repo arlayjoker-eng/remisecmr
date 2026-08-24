@@ -161,11 +161,13 @@ export function isHeaderRow(row: SheetRow): boolean {
 }
 
 /** Index « nom normalisé » → élève. Les homonymes sont signalés, jamais devinés. */
-export function indexStudentsByName(students: DbStudent[]): {
-  index: Map<string, DbStudent>;
+export function indexStudentsByName<T extends DbStudent>(
+  students: T[],
+): {
+  index: Map<string, T>;
   ambiguous: Set<string>;
 } {
-  const index = new Map<string, DbStudent>();
+  const index = new Map<string, T>();
   const ambiguous = new Set<string>();
   for (const s of students) {
     const key = normalizeName(`${s.lastName} ${s.firstName}`);

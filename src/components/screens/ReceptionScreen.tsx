@@ -5,6 +5,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { K, Btn, Pill, Icons, Spinner } from "@/components/ui";
 import BarcodeScanner from "@/components/BarcodeScanner";
+import { APPOINTMENT_SLOTS } from "@/lib/appointment-slots";
 
 type Status = "PENDING" | "EN_ROUTE" | "DELIVERED";
 type StudentRow = {
@@ -15,6 +16,8 @@ type StudentRow = {
   level: string;
   status: Status;
   announcedAt: string | null;
+  /** Créneau du rendez-vous, ex. « 8h30 ». null = sans rendez-vous. */
+  appointmentTime: string | null;
 };
 
 export default function ReceptionScreen({
@@ -35,6 +38,8 @@ export default function ReceptionScreen({
   const [search, setSearch] = React.useState("");
   const [filterGroup, setFilterGroup] = React.useState<string>("");
   const [filterStatus, setFilterStatus] = React.useState<"" | Status>("");
+  // "" = tous les élèves (comportement d'origine, aucun filtre d'heure).
+  const [filterSlot, setFilterSlot] = React.useState<string>("");
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [lastSync, setLastSync] = React.useState<Date | null>(null);
   const [offline, setOffline] = React.useState(false);
@@ -92,6 +97,16 @@ export default function ReceptionScreen({
     () => Array.from(new Set(students.map((s) => s.group))).sort(),
     [students],
   );
+  // Combien d'élèves par créneau — affiché dans le sélecteur pour savoir
+  // d'un coup d'œil ce qui reste à faire dans l'heure en cours.
+  const slotCounts = React.useMemo(() => {
+    const c: Record<string, number> = {};
+    students.forEach((s) => {
+      if (s.appointmentTime) c[s.appointmentTime] = (c[s.appointmentTime] ?? 0) + 1;
+    });
+    return c;
+  }, [students]);
+
   const stats = React.useMemo(() => {
     const c = { PENDING: 0, EN_ROUTE: 0, DELIVERED: 0 };
     students.forEach((s) => c[s.status]++);
@@ -104,6 +119,7 @@ export default function ReceptionScreen({
     return students.filter((s) => {
       if (filterGroup && s.group !== filterGroup) return false;
       if (filterStatus && s.status !== filterStatus) return false;
+      if (filterSlot && s.appointmentTime !== filterSlot) return false;
       if (q) {
         const hay =
           `${s.firstName} ${s.lastName} ${s.studentNumber} ${s.group}`.toLowerCase();
@@ -111,7 +127,7 @@ export default function ReceptionScreen({
       }
       return true;
     });
-  }, [students, search, filterGroup, filterStatus]);
+  }, [students, search, filterGroup, filterStatus, filterSlot]);
 
   return (
     <div
@@ -434,6 +450,73 @@ export default function ReceptionScreen({
                 color: K.ink,
               }}
             />
+          </div>
+
+          {/* Sélecteur de créneau de rendez-vous */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 12px",
+              background: K.surfaceCool,
+              borderRadius: 12,
+              border: `1px solid ${K.line}`,
+              marginBottom: 12,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: K.display,
+                fontSize: 13,
+                fontWeight: 800,
+                color: K.ink3,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Rendez-vous
+            </span>
+            <select
+              value={filterSlot}
+              onChange={(e) => setFilterSlot(e.target.value)}
+              aria-label="Filtrer par créneau de rendez-vous"
+              style={{
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                fontFamily: K.display,
+                fontSize: 14,
+                fontWeight: 700,
+                color: K.ink,
+                cursor: "pointer",
+              }}
+            >
+              <option value="">Toutes les heures</option>
+              {APPOINTMENT_SLOTS.map((slot) => (
+                <option key={slot} value={slot}>
+                  {slot} ({slotCounts[slot] ?? 0})
+                </option>
+              ))}
+            </select>
+            {filterSlot && (
+              <button
+                type="button"
+                onClick={() => setFilterSlot("")}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: K.display,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: K.ink3,
+                  textDecoration: "underline",
+                }}
+              >
+                Effacer
+              </button>
+            )}
           </div>
 
           {/* Status filters */}

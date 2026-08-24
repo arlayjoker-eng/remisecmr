@@ -24,3 +24,9 @@ graphify-out/
 .claude/
 .claudeignore
 CLAUDE.md
+
+# Listes d'élèves exportées : données personnelles, jamais dans le dépôt.
+*_eleves.csv
+*_eleves.xlsx
+# Classeurs déposés à la racine (rendez-vous, casiers…) : données personnelles.
+/*.xlsx

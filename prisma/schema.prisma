@@ -91,6 +91,8 @@ model Student {
   assignedLockerNumber    String? // casier de A (du CSV)
   assignedCombinationCode String?
   petitCasier             String? // saisie manuelle depuis /reports
+  // Créneau du rendez-vous de la rentrée, ex. « 8h30 ». NULL = sans rendez-vous.
+  appointmentTime         String?
   lockerDeliveredAt       DateTime?
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
