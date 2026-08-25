@@ -63,15 +63,22 @@ export async function POST(req: Request) {
   }
 
   // Upsert l'annonce — si l'élève est déjà annoncé on rafraîchit l'heure
+  // On garde le NOM en plus de l'identifiant : au comptoir, « annoncé par
+  // Marie » se lit, un userId non. Le nom est figé au moment de l'annonce, il
+  // ne suit donc pas un renommage ultérieur du compte — c'est voulu, il décrit
+  // qui a agi ce jour-là.
+  const myName = session.user.name || "Réception";
   await prisma.annonce.upsert({
     where: { studentId: student.id },
     update: {
       announcedAt: new Date(),
       announcedBy: String(session.user.id ?? ""),
+      announcedByName: myName,
     },
     create: {
       studentId: student.id,
       announcedBy: String(session.user.id ?? ""),
+      announcedByName: myName,
     },
   });
 

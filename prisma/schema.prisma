@@ -108,6 +108,7 @@ model Annonce {
   studentId     String   @unique
   announcedAt   DateTime @default(now())
   announcedBy   String // userId
+  announcedByName String? // nom affiché : qui a mis l'élève en route
   claimedBy     String? // userId de l'opérateur qui prend en charge
   claimedByName String? // nom affiché aux autres postes
   claimedAt     DateTime? // pour expirer une prise en charge abandonnée

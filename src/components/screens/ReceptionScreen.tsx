@@ -16,6 +16,10 @@ type StudentRow = {
   level: string;
   status: Status;
   announcedAt: string | null;
+  /** Qui a mis l'élève en route (nom figé au moment de l'annonce). */
+  announcedByName: string | null;
+  /** Poste portable qui l'a pris en charge, si la prise est encore active. */
+  claimedByName: string | null;
   /** Créneau du rendez-vous, ex. « 8h30 ». null = sans rendez-vous. */
   appointmentTime: string | null;
 };
@@ -703,7 +707,9 @@ export default function ReceptionScreen({
             >
               {confirming.action === "announce"
                 ? "Le poste des portables le verra arriver."
-                : "L'élève repassera « à remettre »."}
+                : confirming.student.claimedByName
+                  ? `${confirming.student.claimedByName} s'en occupe déjà au poste des portables — l'annulation sera refusée.`
+                  : `Annoncé par ${confirming.student.announcedByName ?? "la réception"}. L'élève repassera « à remettre ».`}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <Btn
@@ -911,6 +917,15 @@ function StudentRowView({
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
+              </span>
+              {s.announcedByName && <> · par {s.announcedByName}</>}
+            </>
+          )}
+          {s.status === "EN_ROUTE" && s.claimedByName && (
+            <>
+              {" · "}
+              <span style={{ color: "#C66526", fontWeight: 800 }}>
+                en cours avec {s.claimedByName}
               </span>
             </>
           )}
