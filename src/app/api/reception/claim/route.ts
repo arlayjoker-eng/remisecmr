@@ -1,9 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { canLaptop } from "@/lib/access";
+import { canLaptop, CLAIM_TTL_MS } from "@/lib/access";
 import { NextResponse } from "next/server";
-
-const CLAIM_TTL_MS = 5 * 60 * 1000;
 
 // POST — un opérateur laptop prend en charge un élève annoncé.
 // body: { studentNumber }

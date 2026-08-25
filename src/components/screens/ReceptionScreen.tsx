@@ -40,6 +40,11 @@ export default function ReceptionScreen({
   const [filterStatus, setFilterStatus] = React.useState<"" | Status>("");
   // "" = tous les élèves (comportement d'origine, aucun filtre d'heure).
   const [filterSlot, setFilterSlot] = React.useState<string>("");
+  // Confirmation avant d'appliquer : marquer « en route » ou annuler l'annonce.
+  // null = aucune boîte de dialogue ouverte.
+  const [confirming, setConfirming] = React.useState<
+    { action: "announce" | "cancel"; student: StudentRow } | null
+  >(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [lastSync, setLastSync] = React.useState<Date | null>(null);
   const [offline, setOffline] = React.useState(false);
@@ -90,6 +95,37 @@ export default function ReceptionScreen({
     } finally {
       setBusy(false);
     }
+  };
+
+  // Annule une annonce : l'élève repasse « à remettre ». Le serveur refuse si
+  // un poste portable l'a déjà pris en charge — on affiche alors son message.
+  const cancelAnnounce = async (student: StudentRow) => {
+    if (busy) return;
+    setBusy(true);
+    setFlash(null);
+    try {
+      const res = await fetch("/api/reception/announce", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentNumber: student.studentNumber }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || "Erreur");
+      refresh();
+    } catch (e) {
+      setFlash({ kind: "err", message: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Applique ce que la boîte de dialogue vient de confirmer.
+  const runConfirmed = () => {
+    if (!confirming) return;
+    const { action, student } = confirming;
+    setConfirming(null);
+    if (action === "announce") announce(student.studentNumber);
+    else cancelAnnounce(student);
   };
 
   // Groupes disponibles + stats
@@ -605,13 +641,92 @@ export default function ReceptionScreen({
                   key={s.studentNumber}
                   s={s}
                   busy={busy}
-                  onAnnounce={() => announce(s.studentNumber)}
+                  onAnnounce={() =>
+                    setConfirming({ action: "announce", student: s })
+                  }
+                  onCancel={() => setConfirming({ action: "cancel", student: s })}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Confirmation — rien n'est appliqué tant que « Oui » n'est pas cliqué. */}
+      {confirming && (
+        <div
+          onClick={() => setConfirming(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,0,60,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            zIndex: 50,
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: 20,
+              padding: 24,
+              maxWidth: 380,
+              width: "100%",
+              boxShadow: "0 24px 60px rgba(15,0,60,0.35)",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: K.display,
+                fontSize: 17,
+                fontWeight: 800,
+                color: K.ink,
+                lineHeight: 1.35,
+              }}
+            >
+              {confirming.action === "announce"
+                ? `Envoyer ${confirming.student.firstName} ${confirming.student.lastName} en route ?`
+                : `Annuler l'annonce de ${confirming.student.firstName} ${confirming.student.lastName} ?`}
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: K.ink3,
+                marginTop: 8,
+              }}
+            >
+              {confirming.action === "announce"
+                ? "Le poste des portables le verra arriver."
+                : "L'élève repassera « à remettre »."}
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <Btn
+                kind="ghost"
+                size="sm"
+                full
+                onClick={() => setConfirming(null)}
+              >
+                Non
+              </Btn>
+              <Btn
+                kind={confirming.action === "announce" ? "primary" : "danger"}
+                size="sm"
+                full
+                disabled={busy}
+                onClick={runConfirmed}
+              >
+                Oui
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -712,17 +827,36 @@ function StudentRowView({
   s,
   busy,
   onAnnounce,
+  onCancel,
 }: {
   s: StudentRow;
   busy: boolean;
   onAnnounce: () => void;
+  onCancel: () => void;
 }) {
+  // « En route » = carton sur roulettes (en chemin) ; « Remis » = carton scellé
+  // (la remise est close). « À remettre » garde son pastille sans icône.
   const tone =
     s.status === "DELIVERED"
-      ? { bg: "#DCF5E5", color: "#1F8A47", label: "Remis" }
+      ? {
+          bg: "#DCF5E5",
+          color: "#1F8A47",
+          label: "Remis",
+          icon: Icons.boxClosed,
+        }
       : s.status === "EN_ROUTE"
-        ? { bg: "#FFE9D9", color: "#C66526", label: "En route" }
-        : { bg: K.surfaceCool, color: K.ink3, label: "À remettre" };
+        ? {
+            bg: "#FFE9D9",
+            color: "#C66526",
+            label: "En route",
+            icon: Icons.boxRolling,
+          }
+        : {
+            bg: K.surfaceCool,
+            color: K.ink3,
+            label: "À remettre",
+            icon: null,
+          };
   return (
     <div
       style={{
@@ -794,8 +928,12 @@ function StudentRowView({
           letterSpacing: 0.6,
           textTransform: "uppercase",
           flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
         }}
       >
+        {tone.icon && tone.icon({ size: 14, stroke: tone.color })}
         {tone.label}
       </div>
       {s.status === "PENDING" && (
@@ -806,6 +944,11 @@ function StudentRowView({
           onClick={onAnnounce}
         >
           Annoncer
+        </Btn>
+      )}
+      {s.status === "EN_ROUTE" && (
+        <Btn kind="ghost" size="sm" disabled={busy} onClick={onCancel}>
+          Annuler
         </Btn>
       )}
     </div>

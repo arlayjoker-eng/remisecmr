@@ -88,6 +88,22 @@ export const Icons = {
       <path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12" />
     </Icon>
   ),
+  // Carton sur roulettes : état « En route » — le portable est en chemin.
+  boxRolling: (p: IconProps) => (
+    <Icon {...p}>
+      <path d="M4 3h16v11H4z" />
+      <path d="M2 14h20" />
+      <circle cx="8" cy="18" r="2.2" />
+      <circle cx="17" cy="18" r="2.2" />
+    </Icon>
+  ),
+  // Carton scellé : ruban en T. État « Remis » — la remise est close.
+  boxClosed: (p: IconProps) => (
+    <Icon {...p}>
+      <path d="M3 7h18v13H3z" />
+      <path d="M3 12h18M12 7v5" />
+    </Icon>
+  ),
   user: (p: IconProps) => (
     <Icon {...p}>
       <circle cx="12" cy="8" r="4" />

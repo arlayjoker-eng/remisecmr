@@ -30,3 +30,12 @@ export async function hasReceptionAccess(user: U): Promise<boolean> {
   });
   return !!me && (me.role === "SUPER_ADMIN" || me.accessReception);
 }
+
+/**
+ * Durée d'une prise en charge par un poste portable. Passé ce délai, la prise
+ * en charge est considérée abandonnée et l'élève redevient disponible.
+ * Partagée par /api/reception/claim (qui la pose) et /api/reception/announce
+ * (qui refuse d'annuler pendant qu'elle est active) : deux valeurs séparées
+ * finiraient par diverger et les deux gardes se contrediraient.
+ */
+export const CLAIM_TTL_MS = 5 * 60 * 1000;
