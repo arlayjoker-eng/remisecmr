@@ -20,6 +20,9 @@ type StudentRow = {
   announcedByName: string | null;
   /** Poste portable qui l'a pris en charge, si la prise est encore active. */
   claimedByName: string | null;
+  /** Qui a fait la remise, une fois l'élève « remis ». */
+  deliveredByName: string | null;
+  deliveredAt: string | null;
   /** Créneau du rendez-vous, ex. « 8h30 ». null = sans rendez-vous. */
   appointmentTime: string | null;
 };
@@ -919,6 +922,18 @@ function StudentRowView({
                 })}
               </span>
               {s.announcedByName && <> · par {s.announcedByName}</>}
+            </>
+          )}
+          {s.status === "DELIVERED" && s.deliveredAt && (
+            <>
+              {" · "}
+              <span style={{ fontFamily: K.mono }}>
+                {new Date(s.deliveredAt).toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              {s.deliveredByName && <> · par {s.deliveredByName}</>}
             </>
           )}
           {s.status === "EN_ROUTE" && s.claimedByName && (

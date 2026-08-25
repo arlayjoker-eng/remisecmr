@@ -33,6 +33,17 @@ export async function GET() {
           claimedAt: true,
         },
       },
+      // La remise elle-même porte son opérateur. On ne prend que le portable :
+      // /api/casier/confirm crée aussi des Delivery, de type CASIER, qui n'ont
+      // rien à faire ici. La contrainte @@unique([studentId, type]) garantit
+      // qu'il n'y en a qu'une.
+      deliveries: {
+        where: { type: "LAPTOP" },
+        select: {
+          deliveredAt: true,
+          operator: { select: { fullName: true } },
+        },
+      },
     },
     orderBy: [{ group: "asc" }, { lastName: "asc" }, { firstName: "asc" }],
   });
@@ -60,6 +71,11 @@ export async function GET() {
         Date.now() - s.annonce.claimedAt.getTime() < CLAIM_TTL_MS
           ? s.annonce.claimedByName
           : null,
+      // Qui a fait la remise. Reste null si laptopStatus vaut DELIVERED sans
+      // Delivery correspondante (un import de portables efface les remises en
+      // conservant le statut) : on préfère ne rien afficher qu'inventer un nom.
+      deliveredByName: s.deliveries[0]?.operator?.fullName ?? null,
+      deliveredAt: s.deliveries[0]?.deliveredAt?.toISOString() ?? null,
     })),
   );
 }
