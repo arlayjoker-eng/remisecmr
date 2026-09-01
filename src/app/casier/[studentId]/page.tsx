@@ -68,6 +68,7 @@ export default async function CasierPage({
         binome={partner ? toClientStudent(partner) : null}
         availableLockers={availableLockers}
         operatorName={operatorName}
+        petitCasier={student.petitCasier || ""}
       />
     );
   }
@@ -80,6 +81,7 @@ export default async function CasierPage({
       binome={null}
       availableLockers={availableLockers}
       operatorName={operatorName}
+      petitCasier={student.petitCasier || ""}
     />
   );
 }

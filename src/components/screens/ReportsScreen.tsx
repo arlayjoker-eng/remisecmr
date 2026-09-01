@@ -3,8 +3,16 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { K, Btn, Pill, Icons } from "@/components/ui";
+import { K, Btn, Pill, Icons, Spinner } from "@/components/ui";
 import RoleNav from "@/components/RoleNav";
+import { Alert } from "@/components/screens/StudentScreen";
+import {
+  EditPreviewPanel,
+  EditRow,
+  LevelHint,
+  SectionTitle,
+  type EditPreview,
+} from "@/components/CasierEditFields";
 
 type Row = {
   typeKey: string;
@@ -28,6 +36,8 @@ type Row = {
 type EditTarget = {
   studentNumber: string;
   name: string;
+  group: string;
+  level: string;
   lockerNumber: string;
   combinationCode: string;
   binomeNumber: string;
@@ -531,6 +541,8 @@ export default function ReportsScreen({
                           setEdit({
                             studentNumber: r.studentNumber,
                             name: r.name,
+                            group: r.group,
+                            level: r.level,
                             lockerNumber: r.lockerNumber,
                             combinationCode: r.combinationCode,
                             binomeNumber: r.binomeNumber,
@@ -607,14 +619,18 @@ function CasierEditModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [group, setGroup] = React.useState(target.group);
   const [casier, setCasier] = React.useState(target.lockerNumber);
   const [code, setCode] = React.useState(target.combinationCode);
   const [binome, setBinome] = React.useState(target.binomeNumber);
   const [petit, setPetit] = React.useState(target.petitCasier);
+  const [preview, setPreview] = React.useState<EditPreview | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
 
-  const submit = async () => {
+  const hasLocker = target.lockerNumber !== "";
+
+  const send = async (mode: "preview" | "apply") => {
     setBusy(true);
     setErr("");
     try {
@@ -624,24 +640,41 @@ function CasierEditModal({
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            casier,
-            code,
-            binomeNumber: binome,
+            group,
             petitCasier: petit,
+            ...(hasLocker
+              ? { casier, code, binomeNumber: binome }
+              : {}),
+            mode,
           }),
         },
       );
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j?.error || "Erreur");
-      onSaved();
+      // 409 = conflits métier : ils s'affichent dans le panneau, pas en erreur.
+      if (res.status === 401 || res.status === 403 || res.status >= 500) {
+        throw new Error(j?.error || "Échec de la vérification.");
+      }
+      if (mode === "apply" && res.ok && j?.applied) {
+        onSaved();
+        return;
+      }
+      setPreview({
+        ok: !!j?.ok,
+        changes: j?.changes ?? [],
+        warnings: j?.warnings ?? [],
+        conflicts: j?.conflicts ?? [],
+      });
     } catch (e) {
       setErr((e as Error).message);
+    } finally {
       setBusy(false);
     }
   };
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       style={{
         position: "fixed",
         inset: 0,
@@ -653,12 +686,15 @@ function CasierEditModal({
         alignItems: "center",
         justifyContent: "center",
         padding: 24,
+        animation: "overlayIn 0.3s ease both",
       }}
     >
       <div
         style={{
-          width: 480,
+          width: 560,
           maxWidth: "100%",
+          maxHeight: "92vh",
+          overflow: "auto",
           background: "#fff",
           color: K.ink,
           borderRadius: 28,
@@ -666,23 +702,22 @@ function CasierEditModal({
           boxShadow: "0 30px 80px rgba(15,0,60,0.45)",
           display: "flex",
           flexDirection: "column",
-          gap: 14,
-          maxHeight: "90vh",
-          overflow: "auto",
+          gap: 22,
         }}
       >
+        {/* En-tête */}
         <div>
           <div
             style={{
               fontFamily: K.display,
               fontSize: 11,
               fontWeight: 800,
-              color: "#2BB070",
+              color: K.violet,
               letterSpacing: 1.4,
               textTransform: "uppercase",
             }}
           >
-            ● Modifier casier
+            ● Modifier la fiche
           </div>
           <div
             style={{
@@ -697,113 +732,119 @@ function CasierEditModal({
             {target.name}
           </div>
           <div style={{ fontSize: 12, color: K.ink3, marginTop: 2 }}>
-            N° {target.studentNumber}
+            N° {target.studentNumber} · {target.group} · Secondaire{" "}
+            {target.level}
           </div>
         </div>
 
-        <EditField
-          label="Casier (numéro)"
-          value={casier}
-          onChange={setCasier}
-          placeholder="ex. 218"
-        />
-        <EditField
-          label="Code du cadenas"
-          value={code}
-          onChange={setCode}
-          placeholder="ex. 12-24-08"
-        />
-        <EditField
-          label={`Binôme (numéro élève)${target.binomeName ? " — actuel: " + target.binomeName : ""}`}
-          value={binome}
-          onChange={setBinome}
-          placeholder="Numéro de l'élève — vide pour aucun"
-        />
-        <EditField
-          label="Petit casier"
-          value={petit}
-          onChange={setPetit}
-          placeholder="ex. PC-04"
-        />
+        {preview ? (
+          <EditPreviewPanel
+            preview={preview}
+            busy={busy}
+            onBack={() => setPreview(null)}
+            onConfirm={() => send("apply")}
+          />
+        ) : (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <SectionTitle>Élève</SectionTitle>
+              <EditRow
+                label="Groupe scolaire"
+                value={group}
+                onChange={setGroup}
+                placeholder="ex. 110"
+              />
+              <LevelHint
+                group={group}
+                currentGroup={target.group}
+                currentLevel={target.level}
+                lockerNumber={target.lockerNumber}
+              />
+            </div>
 
-        {err && (
-          <div
-            style={{
-              background: K.pinkSoft,
-              color: "#B2245A",
-              borderRadius: 12,
-              padding: "10px 14px",
-              fontSize: 12.5,
-              fontWeight: 700,
-            }}
-          >
-            {err}
-          </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <SectionTitle>Casier</SectionTitle>
+              {hasLocker ? (
+                <>
+                  <EditRow
+                    label="Grand casier"
+                    value={casier}
+                    onChange={setCasier}
+                    placeholder="ex. 218"
+                    mono
+                  />
+                  <EditRow
+                    label="Code du cadenas"
+                    value={code}
+                    onChange={setCode}
+                    placeholder="ex. 12-24-08"
+                    mono
+                  />
+                </>
+              ) : (
+                <Alert
+                  tone="amber"
+                  title="Aucun casier attribué"
+                  text="Le casier, son code et le binôme se règlent à l'attribution, depuis le kiosque."
+                />
+              )}
+              <EditRow
+                label="Petit casier"
+                value={petit}
+                onChange={setPetit}
+                placeholder="ex. PC-04"
+                mono
+              />
+            </div>
+
+            {hasLocker && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <SectionTitle>Binôme</SectionTitle>
+                <EditRow
+                  label={`Numéro de l'élève${target.binomeName ? ` — actuel : ${target.binomeName}` : ""}`}
+                  value={binome}
+                  onChange={setBinome}
+                  placeholder="Vide pour aucun binôme"
+                  mono
+                />
+              </div>
+            )}
+
+            {err && (
+              <div
+                style={{
+                  background: K.pinkSoft,
+                  color: "#B2245A",
+                  borderRadius: 14,
+                  padding: "12px 16px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                {err}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <Btn kind="ghost" size="lg" onClick={onClose} style={{ flex: 1 }}>
+                Annuler
+              </Btn>
+              <Btn
+                kind="primary"
+                size="lg"
+                disabled={busy}
+                icon={
+                  busy ? <Spinner /> : Icons.check({ size: 20, stroke: "#fff" })
+                }
+                onClick={() => send("preview")}
+                style={{ flex: 2 }}
+              >
+                {busy ? "Vérification…" : "Vérifier les changements"}
+              </Btn>
+            </div>
+          </>
         )}
-
-        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-          <Btn kind="ghost" size="md" onClick={onClose} style={{ flex: 1 }}>
-            Annuler
-          </Btn>
-          <Btn
-            kind="primary"
-            size="md"
-            onClick={submit}
-            disabled={busy}
-            style={{ flex: 2 }}
-          >
-            {busy ? "Enregistrement…" : "Enregistrer"}
-          </Btn>
-        </div>
       </div>
-    </div>
-  );
-}
-
-function EditField({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          fontFamily: K.display,
-          fontSize: 11,
-          fontWeight: 800,
-          color: K.ink3,
-          letterSpacing: 1,
-          textTransform: "uppercase",
-          marginBottom: 6,
-        }}
-      >
-        {label}
-      </div>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{
-          width: "100%",
-          height: 46,
-          borderRadius: 12,
-          border: `2px solid ${K.lineStrong}`,
-          padding: "0 14px",
-          fontSize: 15,
-          fontWeight: 600,
-          fontFamily: K.display,
-          color: K.ink,
-          outline: "none",
-          background: K.surfaceCool,
-        }}
-      />
     </div>
   );
 }

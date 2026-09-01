@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 import { K, Btn, Pill, KV, Avatar, TileIcon, Icons, Spinner } from "@/components/ui";
 import { Alert } from "@/components/screens/StudentScreen";
 import type { ClientStudent } from "@/lib/mappers";
+import {
+  EditPreviewPanel,
+  EditRow,
+  LevelHint,
+  SectionTitle,
+  type EditPreview,
+} from "@/components/CasierEditFields";
 
 type SearchResult = {
   id: string;
@@ -29,6 +36,8 @@ type Props = {
   binome: ClientStudent | null;
   availableLockers: LockerOpt[];
   operatorName: string;
+  /** Petit casier de l'élève — hors DTO client par défaut (voir mappers.ts). */
+  petitCasier: string;
 };
 
 export default function CasierScreen({
@@ -38,6 +47,7 @@ export default function CasierScreen({
   binome,
   availableLockers,
   operatorName,
+  petitCasier,
 }: Props) {
   const router = useRouter();
   const isDone = mode === "done";
@@ -50,10 +60,8 @@ export default function CasierScreen({
   const [selectedBinome, setSelectedBinome] = React.useState<
     ClientStudent | SearchResult | null
   >(binome);
-  const [query, setQuery] = React.useState("");
-  const [results, setResults] = React.useState<SearchResult[]>([]);
-  const [searching, setSearching] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [editing, setEditing] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState("");
   const [savingBinome, setSavingBinome] = React.useState(false);
@@ -89,29 +97,6 @@ export default function CasierScreen({
       setSavingBinome(false);
     }
   };
-
-  // recherche binôme (debounce)
-  React.useEffect(() => {
-    const q = query.trim();
-    if (q.length < 1) {
-      setResults([]);
-      return;
-    }
-    setSearching(true);
-    const t = setTimeout(async () => {
-      try {
-        const r = await fetch(
-          `/api/students/search?q=${encodeURIComponent(q)}&excludeId=${encodeURIComponent(student.id)}`,
-        );
-        if (r.ok) setResults(await r.json());
-      } catch {
-        /* réseau */
-      } finally {
-        setSearching(false);
-      }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [query, student.id]);
 
   // filtre des casiers disponibles
   const lockerMatches = React.useMemo(() => {
@@ -301,6 +286,16 @@ export default function CasierScreen({
                 {isDone && <Pill tone="success">Casier remis</Pill>}
               </div>
             </div>
+            {/* Correction de fiche — volontairement « ghost » : l'action
+                principale de l'écran reste la remise du casier. */}
+            <Btn
+              kind="ghost"
+              size="md"
+              icon={Icons.pen({ size: 18 })}
+              onClick={() => setEditing(true)}
+            >
+              Modifier la fiche
+            </Btn>
           </div>
 
           <KV
@@ -356,153 +351,11 @@ export default function CasierScreen({
             {selectedBinome ? "2ᵉ élève du casier" : "Aucun binôme"}
           </div>
 
-          {selectedBinome ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                padding: "14px 16px",
-                borderRadius: 18,
-                background: K.surfaceCool,
-                border: `2px dashed ${K.lineStrong}`,
-              }}
-            >
-              <Avatar student={selectedBinome} size={52} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontFamily: K.display,
-                    fontSize: 16,
-                    fontWeight: 800,
-                    color: K.ink,
-                  }}
-                >
-                  {selectedBinome.firstName} {selectedBinome.lastName}
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: K.ink3,
-                    fontWeight: 700,
-                    marginTop: 2,
-                  }}
-                >
-                  <span style={{ fontFamily: K.mono }}>
-                    {selectedBinome.studentNumber}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedBinome(null)}
-                style={{
-                  border: "none",
-                  background: K.pinkSoft,
-                  color: "#B2245A",
-                  borderRadius: 999,
-                  padding: "8px 14px",
-                  fontFamily: K.display,
-                  fontSize: 11,
-                  fontWeight: 800,
-                  letterSpacing: 0.8,
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                }}
-              >
-                Retirer
-              </button>
-            </div>
-          ) : (
-            (
-              <div style={{ position: "relative" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    background: K.surfaceCool,
-                    borderRadius: 14,
-                    padding: "12px 14px",
-                    border: `2px solid ${K.lineStrong}`,
-                  }}
-                >
-                  {Icons.search({ size: 18, stroke: K.ink3 })}
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Chercher un binôme (nom, numéro, groupe)…"
-                    style={{
-                      flex: 1,
-                      background: "transparent",
-                      border: "none",
-                      outline: "none",
-                      fontFamily: K.display,
-                      fontSize: 15,
-                      fontWeight: 700,
-                      color: K.ink,
-                    }}
-                  />
-                  {searching && <Spinner />}
-                </div>
-                {results.length > 0 && (
-                  <div
-                    style={{
-                      marginTop: 8,
-                      borderRadius: 14,
-                      border: `1px solid ${K.line}`,
-                      maxHeight: 240,
-                      overflow: "auto",
-                    }}
-                  >
-                    {results.map((r) => (
-                      <div
-                        key={r.id}
-                        onClick={() => {
-                          setSelectedBinome(r);
-                          setQuery("");
-                          setResults([]);
-                        }}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          padding: "10px 12px",
-                          cursor: "pointer",
-                          borderBottom: `1px solid ${K.line}`,
-                        }}
-                      >
-                        <Avatar student={r} size={38} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontFamily: K.display,
-                              fontSize: 14,
-                              fontWeight: 800,
-                              color: K.ink,
-                            }}
-                          >
-                            {r.firstName} {r.lastName}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 11.5,
-                              color: K.ink3,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {r.group} ·{" "}
-                            <span style={{ fontFamily: K.mono }}>
-                              {r.studentNumber}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          )}
+          <BinomePicker
+            selected={selectedBinome}
+            onSelect={setSelectedBinome}
+            excludeId={student.id}
+          />
 
           {/* Enregistrer le binôme — mode « done » uniquement */}
           {(binomeDirty || binomeFlash) && (
@@ -921,6 +774,20 @@ export default function CasierScreen({
         )}
       </div>
 
+      {editing && (
+        <StudentEditModal
+          student={student}
+          lockerNumber={assignedLocker?.number ?? ""}
+          petitCasier={petitCasier}
+          binome={binome}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            router.refresh();
+          }}
+        />
+      )}
+
       {success && (
         <div
           style={{
@@ -1031,6 +898,432 @@ export default function CasierScreen({
           </Btn>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Sélecteur de binôme — recherche débounce + fiche de l'élève choisi.
+   Partagé par l'écran principal et la fiche de correction : une seule
+   implémentation, donc un seul comportement à maintenir.
+   ──────────────────────────────────────────────────────────────────────── */
+function BinomePicker({
+  selected,
+  onSelect,
+  excludeId,
+}: {
+  selected: ClientStudent | SearchResult | null;
+  onSelect: (s: SearchResult | null) => void;
+  excludeId: string;
+}) {
+  const [query, setQuery] = React.useState("");
+  const [results, setResults] = React.useState<SearchResult[]>([]);
+  const [searching, setSearching] = React.useState(false);
+
+  React.useEffect(() => {
+    const q = query.trim();
+    if (q.length < 1) {
+      setResults([]);
+      return;
+    }
+    setSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(
+          `/api/students/search?q=${encodeURIComponent(q)}&excludeId=${encodeURIComponent(excludeId)}`,
+        );
+        if (r.ok) setResults(await r.json());
+      } catch {
+        /* réseau */
+      } finally {
+        setSearching(false);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, excludeId]);
+
+  if (selected) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          padding: "14px 16px",
+          borderRadius: 18,
+          background: K.surfaceCool,
+          border: `2px dashed ${K.lineStrong}`,
+        }}
+      >
+        <Avatar student={selected} size={52} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: K.display,
+              fontSize: 16,
+              fontWeight: 800,
+              color: K.ink,
+            }}
+          >
+            {selected.firstName} {selected.lastName}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: K.ink3,
+              fontWeight: 700,
+              marginTop: 2,
+            }}
+          >
+            <span style={{ fontFamily: K.mono }}>{selected.studentNumber}</span>
+          </div>
+        </div>
+        <button
+          onClick={() => onSelect(null)}
+          style={{
+            border: "none",
+            background: K.pinkSoft,
+            color: "#B2245A",
+            borderRadius: 999,
+            padding: "8px 14px",
+            fontFamily: K.display,
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: 0.8,
+            textTransform: "uppercase",
+            cursor: "pointer",
+          }}
+        >
+          Retirer
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          background: K.surfaceCool,
+          borderRadius: 14,
+          padding: "12px 14px",
+          border: `2px solid ${K.lineStrong}`,
+        }}
+      >
+        {Icons.search({ size: 18, stroke: K.ink3 })}
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Chercher un binôme (nom, numéro, groupe)…"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            fontFamily: K.display,
+            fontSize: 15,
+            fontWeight: 700,
+            color: K.ink,
+          }}
+        />
+        {searching && <Spinner />}
+      </div>
+      {results.length > 0 && (
+        <div
+          style={{
+            marginTop: 8,
+            borderRadius: 14,
+            border: `1px solid ${K.line}`,
+            maxHeight: 240,
+            overflow: "auto",
+          }}
+        >
+          {results.map((r) => (
+            <div
+              key={r.id}
+              onClick={() => {
+                onSelect(r);
+                setQuery("");
+                setResults([]);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "10px 12px",
+                cursor: "pointer",
+                borderBottom: `1px solid ${K.line}`,
+              }}
+            >
+              <Avatar student={r} size={38} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: K.display,
+                    fontSize: 14,
+                    fontWeight: 800,
+                    color: K.ink,
+                  }}
+                >
+                  {r.firstName} {r.lastName}
+                </div>
+                <div style={{ fontSize: 11.5, color: K.ink3, fontWeight: 700 }}>
+                  {r.group} ·{" "}
+                  <span style={{ fontFamily: K.mono }}>{r.studentNumber}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Fiche de correction — groupe, grand casier, petit casier, binôme.
+   En deux temps : on VÉRIFIE côté serveur (aperçu du diff, avertissements et
+   conflits), puis on confirme. L'opérateur ne valide jamais à l'aveugle.
+   ──────────────────────────────────────────────────────────────────────── */
+function StudentEditModal({
+  student,
+  lockerNumber,
+  petitCasier,
+  binome,
+  onClose,
+  onSaved,
+}: {
+  student: ClientStudent;
+  lockerNumber: string;
+  petitCasier: string;
+  binome: ClientStudent | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [group, setGroup] = React.useState(student.group);
+  const [grand, setGrand] = React.useState(lockerNumber);
+  const [petit, setPetit] = React.useState(petitCasier);
+  const [pair, setPair] = React.useState<ClientStudent | SearchResult | null>(
+    binome,
+  );
+  const [preview, setPreview] = React.useState<EditPreview | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+
+  const hasLocker = lockerNumber !== "";
+
+  const send = async (mode: "preview" | "apply") => {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/casier/student-edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentNumber: student.studentNumber,
+          group: group.trim(),
+          petitCasier: petit.trim(),
+          ...(hasLocker
+            ? {
+                lockerNumber: grand.trim(),
+                binomeStudentNumber: pair?.studentNumber ?? "",
+              }
+            : {}),
+          mode,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      // 409 = conflits métier : ils s'affichent dans le panneau, pas en erreur.
+      if (res.status === 401 || res.status === 403 || res.status >= 500) {
+        throw new Error(j?.error || "Échec de la vérification.");
+      }
+      if (mode === "apply" && res.ok && j?.applied) {
+        onSaved();
+        return;
+      }
+      setPreview({
+        ok: !!j?.ok,
+        changes: j?.changes ?? [],
+        warnings: j?.warnings ?? [],
+        conflicts: j?.conflicts ?? [],
+      });
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const blocked = (preview?.conflicts.length ?? 0) > 0;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 90,
+        background: "rgba(8,0,31,0.55)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        animation: "overlayIn 0.3s ease both",
+      }}
+    >
+      <div
+        style={{
+          width: 560,
+          maxWidth: "100%",
+          maxHeight: "92vh",
+          overflow: "auto",
+          background: "#fff",
+          color: K.ink,
+          borderRadius: 28,
+          padding: 28,
+          boxShadow: "0 30px 80px rgba(15,0,60,0.45)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 22,
+        }}
+      >
+        {/* En-tête */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Avatar student={student} size={56} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontFamily: K.display,
+                fontSize: 11,
+                fontWeight: 800,
+                color: K.violet,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+              }}
+            >
+              ● Modifier la fiche
+            </div>
+            <div
+              style={{
+                fontFamily: K.display,
+                fontSize: 22,
+                fontWeight: 800,
+                color: K.ink,
+                letterSpacing: -0.6,
+                marginTop: 2,
+              }}
+            >
+              {student.firstName} {student.lastName}
+            </div>
+          </div>
+          <Pill tone="primary">{student.studentNumber}</Pill>
+        </div>
+
+        {preview ? (
+          <EditPreviewPanel
+            preview={preview}
+            busy={busy}
+            onBack={() => setPreview(null)}
+            onConfirm={() => send("apply")}
+          />
+        ) : (
+          /* ── Étape 1 : les champs ──────────────────────────────────── */
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <SectionTitle>Élève</SectionTitle>
+              <EditRow
+                label="Groupe scolaire"
+                value={group}
+                onChange={setGroup}
+                placeholder="ex. 110"
+              />
+              <LevelHint
+                group={group}
+                currentGroup={student.group}
+                currentLevel={student.level}
+                lockerNumber={lockerNumber}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <SectionTitle>Casier</SectionTitle>
+              {hasLocker ? (
+                <EditRow
+                  label="Grand casier"
+                  value={grand}
+                  onChange={setGrand}
+                  placeholder="ex. 218"
+                  mono
+                />
+              ) : (
+                <Alert
+                  tone="amber"
+                  title="Aucun casier attribué"
+                  text="Le grand casier et le binôme se règlent à l'attribution, sur cet écran."
+                />
+              )}
+              <EditRow
+                label="Petit casier"
+                value={petit}
+                onChange={setPetit}
+                placeholder="ex. PC-04"
+                mono
+              />
+            </div>
+
+            {hasLocker && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <SectionTitle>Binôme</SectionTitle>
+                <BinomePicker
+                  selected={pair}
+                  onSelect={setPair}
+                  excludeId={student.id}
+                />
+              </div>
+            )}
+
+            {err && (
+              <div
+                style={{
+                  background: K.pinkSoft,
+                  color: "#B2245A",
+                  borderRadius: 14,
+                  padding: "12px 16px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                {err}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <Btn kind="ghost" size="lg" onClick={onClose} style={{ flex: 1 }}>
+                Annuler
+              </Btn>
+              <Btn
+                kind="primary"
+                size="lg"
+                disabled={busy}
+                icon={
+                  busy ? <Spinner /> : Icons.check({ size: 20, stroke: "#fff" })
+                }
+                onClick={() => send("preview")}
+                style={{ flex: 2 }}
+              >
+                {busy ? "Vérification…" : "Vérifier les changements"}
+              </Btn>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
