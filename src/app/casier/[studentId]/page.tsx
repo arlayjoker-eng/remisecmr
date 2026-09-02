@@ -4,6 +4,7 @@ import { toClientStudent } from "@/lib/mappers";
 import { canCasier } from "@/lib/access";
 import { notFound, redirect } from "next/navigation";
 import CasierScreen from "@/components/screens/CasierScreen";
+import { conflictsByNumber } from "@/lib/locker-conflicts";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,13 @@ export default async function CasierPage({
     serialNumber: l.serialNumber || "",
   }));
 
+  // Le casier de cet élève porte-t-il des données qui se contredisent ?
+  // On avertit l'opérateur sans jamais l'empêcher de remettre le casier.
+  const allConflicts = await conflictsByNumber(prisma);
+  const lockerConflicts = existing
+    ? (allConflicts.get(existing.number) ?? [])
+    : [];
+
   if (existing) {
     const isA = existing.assignedStudentNumberA === student.studentNumber;
     const partner = isA ? existing.studentB : existing.studentA;
@@ -69,6 +77,7 @@ export default async function CasierPage({
         availableLockers={availableLockers}
         operatorName={operatorName}
         petitCasier={student.petitCasier || ""}
+        lockerConflicts={lockerConflicts}
       />
     );
   }
@@ -82,6 +91,7 @@ export default async function CasierPage({
       availableLockers={availableLockers}
       operatorName={operatorName}
       petitCasier={student.petitCasier || ""}
+      lockerConflicts={[]}
     />
   );
 }

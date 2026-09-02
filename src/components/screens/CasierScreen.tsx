@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { K, Btn, Pill, KV, Avatar, TileIcon, Icons, Spinner } from "@/components/ui";
 import { Alert } from "@/components/screens/StudentScreen";
 import type { ClientStudent } from "@/lib/mappers";
+import LockerConflictDialog, {
+  LockerConflictBanner,
+  type LockerConflictView,
+} from "@/components/LockerConflictDialog";
 import {
   EditPreviewPanel,
   EditRow,
@@ -38,6 +42,8 @@ type Props = {
   operatorName: string;
   /** Petit casier de l'élève — hors DTO client par défaut (voir mappers.ts). */
   petitCasier: string;
+  /** Contradictions relevées sur le casier : on avertit, on ne bloque pas. */
+  lockerConflicts: LockerConflictView[];
 };
 
 export default function CasierScreen({
@@ -48,6 +54,7 @@ export default function CasierScreen({
   availableLockers,
   operatorName,
   petitCasier,
+  lockerConflicts,
 }: Props) {
   const router = useRouter();
   const isDone = mode === "done";
@@ -62,6 +69,11 @@ export default function CasierScreen({
   >(binome);
   const [busy, setBusy] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
+  // Le signalement s'ouvre de lui-même à l'arrivée sur la fiche : l'opérateur
+  // doit le voir avant de donner le code, pas après.
+  const [conflictOpen, setConflictOpen] = React.useState(
+    lockerConflicts.length > 0,
+  );
   const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState("");
   const [savingBinome, setSavingBinome] = React.useState(false);
@@ -236,6 +248,10 @@ export default function CasierScreen({
             text="Choisissez le nouveau casier. L'ancien sera libéré et redeviendra disponible."
           />
         )}
+        <LockerConflictBanner
+          conflicts={lockerConflicts}
+          onOpen={() => setConflictOpen(true)}
+        />
 
         {/* Identité */}
         <div
@@ -773,6 +789,14 @@ export default function CasierScreen({
           </>
         )}
       </div>
+
+      {conflictOpen && (
+        <LockerConflictDialog
+          conflicts={lockerConflicts}
+          studentName={`${student.firstName} ${student.lastName}`}
+          onClose={() => setConflictOpen(false)}
+        />
+      )}
 
       {editing && (
         <StudentEditModal

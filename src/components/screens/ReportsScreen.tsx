@@ -6,6 +6,9 @@ import { signOut } from "next-auth/react";
 import { K, Btn, Pill, Icons, Spinner } from "@/components/ui";
 import RoleNav from "@/components/RoleNav";
 import { Alert } from "@/components/screens/StudentScreen";
+import LockerConflictDialog, {
+  type LockerConflictView,
+} from "@/components/LockerConflictDialog";
 import {
   EditPreviewPanel,
   EditRow,
@@ -31,6 +34,8 @@ type Row = {
   lockerNumber: string;
   combinationCode: string;
   petitCasier: string;
+  /** Contradictions relevées sur le casier de cette ligne. */
+  conflicts: LockerConflictView[];
 };
 
 type EditTarget = {
@@ -86,6 +91,8 @@ export default function ReportsScreen({
   const [f, setF] = React.useState<Filters>(filters);
   const [search, setSearch] = React.useState("");
   const [edit, setEdit] = React.useState<EditTarget | null>(null);
+  // Ligne dont on regarde le signalement de casier.
+  const [conflictRow, setConflictRow] = React.useState<Row | null>(null);
 
   const filteredRows = React.useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -485,8 +492,23 @@ export default function ReportsScreen({
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((r, i) => (
-                <tr key={i}>
+              {filteredRows.map((r, i) => {
+                const flagged = r.conflicts.length > 0;
+                return (
+                <tr
+                  key={i}
+                  onClick={flagged ? () => setConflictRow(r) : undefined}
+                  title={
+                    flagged
+                      ? "Données de casier contradictoires — toucher pour le détail"
+                      : undefined
+                  }
+                  style={
+                    flagged
+                      ? { background: K.pinkSoft, cursor: "pointer" }
+                      : undefined
+                  }
+                >
                   <td style={td}>
                     <span style={{ fontFamily: K.mono, fontSize: 12.5 }}>
                       {r.studentNumber}
@@ -500,8 +522,20 @@ export default function ReportsScreen({
                       {r.type}
                     </Pill>
                   </td>
-                  <td style={{ ...td, fontSize: 12.5, color: K.ink2 }}>
+                  <td
+                    style={{
+                      ...td,
+                      fontSize: 12.5,
+                      color: flagged ? "#B2245A" : K.ink2,
+                      fontWeight: flagged ? 800 : undefined,
+                    }}
+                  >
                     {r.details}
+                    {flagged && (
+                      <span style={{ marginLeft: 8 }}>
+                        <Pill tone="danger">⚠ Conflit</Pill>
+                      </span>
+                    )}
                   </td>
                   <td style={td}>
                     <Pill tone={r.stateKey === "DELIVERED" ? "success" : "warn"}>
@@ -537,7 +571,10 @@ export default function ReportsScreen({
                   <td style={td}>
                     {r.typeKey === "CASIER" && canEdit(role) ? (
                       <button
-                        onClick={() =>
+                        onClick={(e) => {
+                          // La ligne entière ouvre le signalement : ce bouton
+                          // ne doit pas déclencher les deux à la fois.
+                          e.stopPropagation();
                           setEdit({
                             studentNumber: r.studentNumber,
                             name: r.name,
@@ -548,8 +585,8 @@ export default function ReportsScreen({
                             binomeNumber: r.binomeNumber,
                             binomeName: r.binomeName,
                             petitCasier: r.petitCasier,
-                          })
-                        }
+                          });
+                        }}
                         style={editBtnStyle}
                       >
                         ✎ Modifier
@@ -559,7 +596,8 @@ export default function ReportsScreen({
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {filteredRows.length === 0 && (
                 <tr>
                   <td
@@ -581,6 +619,14 @@ export default function ReportsScreen({
           </table>
         </div>
       </div>
+
+      {conflictRow && (
+        <LockerConflictDialog
+          conflicts={conflictRow.conflicts}
+          studentName={conflictRow.name}
+          onClose={() => setConflictRow(null)}
+        />
+      )}
 
       {edit && (
         <CasierEditModal

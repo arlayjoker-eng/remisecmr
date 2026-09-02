@@ -6,6 +6,8 @@ import {
   clampReportType,
 } from "@/lib/reports";
 import ReportsScreen from "@/components/screens/ReportsScreen";
+import { prisma } from "@/lib/db";
+import { conflictsByNumber } from "@/lib/locker-conflicts";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,9 @@ export default async function ReportsPage({
     type: effectiveType,
   });
 
+  // Contradictions relevées sur les casiers : la liste les signale en rouge.
+  const conflicts = await conflictsByNumber(prisma);
+
   const clientRows = rows.map((r) => ({
     typeKey: r.typeKey,
     type: r.type,
@@ -54,6 +59,10 @@ export default async function ReportsPage({
     lockerNumber: r.lockerNumber,
     combinationCode: r.combinationCode,
     petitCasier: r.petitCasier,
+    conflicts:
+      r.typeKey === "CASIER" && r.lockerNumber
+        ? (conflicts.get(r.lockerNumber) ?? [])
+        : [],
   }));
 
   return (
