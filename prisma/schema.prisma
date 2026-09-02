@@ -173,13 +173,19 @@ model Delivery {
 // l'import n'a pas encore de ligne, et doit rester signalé pour le jour où
 // l'attribution le créera.
 model LockerConflict {
-  id          String   @id @default(cuid())
-  number      String // casier concerné
-  kind        String // "DIVERGENT" | "SERIE_PARTAGEE"
-  field       String // "série", "code", "série et code"
-  values      String // les versions en présence, lisibles telles quelles
-  otherNumber String? // l'autre casier, quand une série est partagée
-  detectedAt  DateTime @default(now())
+  id     String  @id @default(cuid())
+  number String? // casier concerné — absent quand le problème est « aucun casier »
+  // "DIVERGENT" | "SERIE_PARTAGEE" | "ELEVE_DEUX_CASIERS"
+  // | "CASIER_SURCHARGE" | "DESACCORD_OCCUPANT" | "SANS_CASIER"
+  kind        String
+  field       String // ce qui cloche, en un mot : « série », « occupant »…
+  values      String // le détail lisible, tel quel à l'écran
+  otherNumber String? // l'autre casier, quand deux se contredisent
+  // L'élève concerné, quand le problème est le sien et non celui du casier.
+  // C'est ce qui permet de teinter sa ligne même sans numéro de casier.
+  studentNumber String?
+  detectedAt    DateTime @default(now())
 
   @@index([number])
+  @@index([studentNumber])
 }

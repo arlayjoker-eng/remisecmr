@@ -625,6 +625,34 @@ export default function ReportsScreen({
           conflicts={conflictRow.conflicts}
           studentName={conflictRow.name}
           onClose={() => setConflictRow(null)}
+          onFix={
+            // Corriger depuis l'avertissement : on enchaîne directement sur le
+            // modal d'édition, l'opérateur n'a pas à retrouver la ligne.
+            canEdit(role)
+              ? () => {
+                  const r = conflictRow;
+                  setConflictRow(null);
+                  // Un élève sans casier ne se corrige pas ici : le modal
+                  // d'édition ne sait pas en attribuer un. On l'envoie à
+                  // l'écran de remise, qui le sait.
+                  if (r.conflicts.every((c) => c.kind === "SANS_CASIER")) {
+                    router.push(`/casier/${encodeURIComponent(r.studentNumber)}`);
+                    return;
+                  }
+                  setEdit({
+                    studentNumber: r.studentNumber,
+                    name: r.name,
+                    group: r.group,
+                    level: r.level,
+                    lockerNumber: r.lockerNumber,
+                    combinationCode: r.combinationCode,
+                    binomeNumber: r.binomeNumber,
+                    binomeName: r.binomeName,
+                    petitCasier: r.petitCasier,
+                  });
+                }
+              : undefined
+          }
         />
       )}
 

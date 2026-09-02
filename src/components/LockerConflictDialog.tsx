@@ -8,17 +8,28 @@ import React from "react";
 import { K, Btn, Pill, Icons } from "@/components/ui";
 
 export type LockerConflictView = {
-  number: string;
+  number: string | null;
   kind: string;
   field: string;
   values: string;
   otherNumber: string | null;
+  studentNumber: string | null;
+};
+
+const TITLES: Record<string, string> = {
+  SERIE_PARTAGEE: "Cadenas enregistré sur deux casiers",
+  ELEVE_DEUX_CASIERS: "Cet élève apparaît dans deux casiers",
+  CASIER_SURCHARGE: "Plus de deux élèves sur ce casier",
+  DESACCORD_OCCUPANT: "La fiche et le casier ne concordent pas",
+  SANS_CASIER: "Aucun casier attribué",
 };
 
 const titleOf = (c: LockerConflictView): string =>
-  c.kind === "SERIE_PARTAGEE"
-    ? `Cadenas enregistré sur deux casiers`
-    : `Le fichier donne deux ${c.field} différents`;
+  TITLES[c.kind] ?? `Le fichier donne deux ${c.field} différents`;
+
+/** Un élève qui n'a aucun casier ne se corrige pas : il faut lui en attribuer un. */
+const needsAssignment = (conflicts: LockerConflictView[]): boolean =>
+  conflicts.every((c) => c.kind === "SANS_CASIER");
 
 /** Bandeau compact, à laisser visible après la fermeture du dialogue. */
 export function LockerConflictBanner({
@@ -74,7 +85,9 @@ export function LockerConflictBanner({
             color: "#B2245A",
           }}
         >
-          Données du casier {conflicts[0].number} à vérifier
+          {conflicts[0].number
+            ? `Données du casier ${conflicts[0].number} à vérifier`
+            : "Situation du casier à vérifier"}
         </span>
         <span style={{ display: "block", fontSize: 12, color: K.ink3, fontWeight: 700 }}>
           {conflicts.length} signalement(s) — toucher pour voir le détail
@@ -89,10 +102,13 @@ export default function LockerConflictDialog({
   conflicts,
   studentName,
   onClose,
+  onFix,
 }: {
   conflicts: LockerConflictView[];
   studentName?: string;
   onClose: () => void;
+  /** Ouvre la correction. Absent = pas de raccourci, on ferme seulement. */
+  onFix?: () => void;
 }) {
   if (conflicts.length === 0) return null;
   const number = conflicts[0].number;
@@ -174,7 +190,7 @@ export default function LockerConflictDialog({
                 marginTop: 2,
               }}
             >
-              Casier {number}
+              {number ? `Casier ${number}` : "Aucun casier"}
             </div>
             {studentName && (
               <div style={{ fontSize: 12.5, color: K.ink3, fontWeight: 700 }}>
@@ -241,20 +257,30 @@ export default function LockerConflictDialog({
             padding: "12px 16px",
           }}
         >
-          Cela ne vous empêche pas de continuer. Vérifiez le cadenas que vous
-          avez en main avant de communiquer le code à l&apos;élève, et signalez
-          l&apos;écart à la personne qui tient le fichier.
+          {needsAssignment(conflicts)
+            ? "Cela ne vous empêche pas de continuer. Attribuez-lui un casier au comptoir, ou signalez-le à la personne qui tient le fichier."
+            : "Cela ne vous empêche pas de continuer. Vérifiez le cadenas que vous avez en main avant de communiquer le code à l'élève, et signalez l'écart à la personne qui tient le fichier."}
         </div>
 
-        <Btn
-          kind="primary"
-          size="lg"
-          full
-          icon={Icons.check({ size: 20, stroke: "#fff" })}
-          onClick={onClose}
-        >
-          Continuer quand même
-        </Btn>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Btn kind="ghost" size="lg" onClick={onClose} style={{ flex: 1 }} full>
+            Continuer
+          </Btn>
+          {onFix && (
+            <Btn
+              kind="primary"
+              size="lg"
+              full
+              icon={Icons.pen({ size: 18, stroke: "#fff" })}
+              onClick={onFix}
+              style={{ flex: 1 }}
+            >
+              {needsAssignment(conflicts)
+                ? "Attribuer un casier"
+                : "Corriger la fiche"}
+            </Btn>
+          )}
+        </div>
       </div>
     </div>
   );

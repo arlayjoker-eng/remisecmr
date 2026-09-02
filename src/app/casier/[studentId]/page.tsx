@@ -4,7 +4,7 @@ import { toClientStudent } from "@/lib/mappers";
 import { canCasier } from "@/lib/access";
 import { notFound, redirect } from "next/navigation";
 import CasierScreen from "@/components/screens/CasierScreen";
-import { conflictsByNumber } from "@/lib/locker-conflicts";
+import { conflictIndex } from "@/lib/locker-conflicts";
 
 export const dynamic = "force-dynamic";
 
@@ -54,12 +54,18 @@ export default async function CasierPage({
     serialNumber: l.serialNumber || "",
   }));
 
-  // Le casier de cet élève porte-t-il des données qui se contredisent ?
-  // On avertit l'opérateur sans jamais l'empêcher de remettre le casier.
-  const allConflicts = await conflictsByNumber(prisma);
-  const lockerConflicts = existing
-    ? (allConflicts.get(existing.number) ?? [])
-    : [];
+  // Quelque chose cloche-t-il pour cet élève ? On croise par casier ET par
+  // élève : un élève qui doit recevoir un casier et n'en a aucun n'a pas de
+  // numéro auquel se raccrocher, et doit être signalé quand même.
+  // On avertit sans jamais empêcher la remise.
+  const { byNumber, byStudent } = await conflictIndex(prisma);
+  const lockerConflicts = [
+    ...(existing ? (byNumber.get(existing.number) ?? []) : []),
+    ...(byStudent.get(student.studentNumber) ?? []),
+  ].filter(
+    (c, i, all) =>
+      all.findIndex((o) => o.kind === c.kind && o.values === c.values) === i,
+  );
 
   if (existing) {
     const isA = existing.assignedStudentNumberA === student.studentNumber;
@@ -91,7 +97,7 @@ export default async function CasierPage({
       availableLockers={availableLockers}
       operatorName={operatorName}
       petitCasier={student.petitCasier || ""}
-      lockerConflicts={[]}
+      lockerConflicts={lockerConflicts}
     />
   );
 }

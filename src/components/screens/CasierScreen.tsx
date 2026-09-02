@@ -71,8 +71,10 @@ export default function CasierScreen({
   const [editing, setEditing] = React.useState(false);
   // Le signalement s'ouvre de lui-même à l'arrivée sur la fiche : l'opérateur
   // doit le voir avant de donner le code, pas après.
+  // Exception : « aucun casier attribué » n'a rien à apprendre à quelqu'un qui
+  // est justement sur l'écran d'attribution. Le bandeau reste, le dialogue non.
   const [conflictOpen, setConflictOpen] = React.useState(
-    lockerConflicts.length > 0,
+    lockerConflicts.some((c) => c.kind !== "SANS_CASIER"),
   );
   const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState("");
@@ -795,6 +797,10 @@ export default function CasierScreen({
           conflicts={lockerConflicts}
           studentName={`${student.firstName} ${student.lastName}`}
           onClose={() => setConflictOpen(false)}
+          onFix={() => {
+            setConflictOpen(false);
+            setEditing(true);
+          }}
         />
       )}
 

@@ -7,7 +7,7 @@ import {
 } from "@/lib/reports";
 import ReportsScreen from "@/components/screens/ReportsScreen";
 import { prisma } from "@/lib/db";
-import { conflictsByNumber } from "@/lib/locker-conflicts";
+import { conflictIndex } from "@/lib/locker-conflicts";
 
 export const dynamic = "force-dynamic";
 
@@ -39,8 +39,10 @@ export default async function ReportsPage({
     type: effectiveType,
   });
 
-  // Contradictions relevées sur les casiers : la liste les signale en rouge.
-  const conflicts = await conflictsByNumber(prisma);
+  // Contradictions relevées : la liste les signale en rouge. On croise par
+  // casier ET par élève — un élève « qui doit recevoir un casier et n'en a
+  // pas » n'a aucun numéro auquel se raccrocher.
+  const { byNumber, byStudent } = await conflictIndex(prisma);
 
   const clientRows = rows.map((r) => ({
     typeKey: r.typeKey,
@@ -60,8 +62,15 @@ export default async function ReportsPage({
     combinationCode: r.combinationCode,
     petitCasier: r.petitCasier,
     conflicts:
-      r.typeKey === "CASIER" && r.lockerNumber
-        ? (conflicts.get(r.lockerNumber) ?? [])
+      r.typeKey === "CASIER"
+        ? [
+            ...(r.lockerNumber ? (byNumber.get(r.lockerNumber) ?? []) : []),
+            ...(byStudent.get(r.studentNumber) ?? []),
+          ].filter(
+            // Un conflit peut être indexé des deux côtés : on ne le montre qu'une fois.
+            (c, i, all) =>
+              all.findIndex((o) => o.kind === c.kind && o.values === c.values) === i,
+          )
         : [],
   }));
 

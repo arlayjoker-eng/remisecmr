@@ -4,9 +4,10 @@ import { parseImport } from "@/lib/import-parse";
 import { parseCatalogueWorkbook } from "@/lib/casier-catalogue";
 import {
   divergentConflicts,
-  refreshSharedSerialConflicts,
+  refreshDerivedConflicts,
   replaceConflicts,
   sharedSerialConflicts,
+  studentPlacementConflicts,
 } from "@/lib/locker-conflicts";
 import { logAudit } from "@/lib/audit";
 import { NextResponse } from "next/server";
@@ -136,7 +137,11 @@ export async function POST(req: Request) {
       await prisma.$transaction(async (tx) => {
         flagged = await replaceConflicts(
           tx,
-          [...divergentConflicts(book.raw), ...(await sharedSerialConflicts(tx))],
+          [
+            ...divergentConflicts(book.raw),
+            ...(await sharedSerialConflicts(tx)),
+            ...(await studentPlacementConflicts(tx)),
+          ],
           { keepDivergent: false },
         );
       });
@@ -257,7 +262,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    await prisma.$transaction((tx) => refreshSharedSerialConflicts(tx));
+    await prisma.$transaction((tx) => refreshDerivedConflicts(tx));
   } catch {
     // Idem : le signalement ne fait pas échouer l'import.
   }
