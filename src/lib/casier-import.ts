@@ -1,13 +1,18 @@
 // Import des casiers depuis le classeur Excel « Liste casier Élèves ».
 //
-// Deux cas, une seule règle de rapprochement :
-//   • Sec 1  → les colonnes casier sont VIDES. Le système forme les binômes
-//     2 par 2 dans l'ordre de la liste et puise les casiers dans la feuille
-//     « Casier libre Futur Sec 1 ». S'il reste un élève impair, il reçoit un
-//     casier individuel (aucun casier gaspillé, aucun élève perdu).
-//   • Sec 2-5 → chaque ligne porte déjà son « Grand Casier ». Les élèves qui
-//     partagent le même Grand Casier sont binômes. La colonne « Numéro série »
-//     N'EST PAS un critère (elle se répète entre élèves non jumelés).
+// Le mode de rapprochement se décide sur les DONNÉES, jamais sur le niveau :
+//   • Si la feuille porte des « Grand Casier » → ils font foi. Les élèves qui
+//     partagent le même Grand Casier sont binômes, quel que soit leur groupe
+//     (un binôme peut être à cheval sur deux groupes). La colonne « Numéro
+//     série » N'EST PAS un critère (elle se répète entre élèves non jumelés).
+//   • Si la colonne est vide de bout en bout → il n'y a rien à lire, alors on
+//     forme les binômes 2 par 2 dans l'ordre et on puise les casiers dans la
+//     feuille « Casier libre Futur Sec 1 ». Un élève impair reçoit un casier
+//     individuel.
+// Historiquement on choisissait la 2ᵉ voie dès que le niveau valait 1. C'était
+// faux : les feuilles « Sec 1 » réelles portent bien leurs Grand Casier, et
+// l'appariement séquentiel se décale dès le premier élève seul — il écrivait
+// de mauvais binômes en silence.
 //
 // Rapprochement élève : STRICT. Le nom de la feuille (« Nom Prénoms ») est
 // normalisé (minuscules, sans accents, espaces compactés) et doit correspondre
@@ -16,6 +21,7 @@
 // et on signale la ligne.
 
 import ExcelJS from "exceljs";
+import Papa from "papaparse";
 
 /** Nom de la feuille des casiers encore libres, réservés aux futurs Sec 1. */
 export const FREE_LOCKERS_SHEET = "Casier libre Futur Sec 1";
@@ -72,15 +78,23 @@ const cell = (row: ExcelJS.Row, col: number): string =>
   String(row.getCell(col).text ?? "").trim();
 
 /**
- * Lit le classeur : la feuille « Sec N » du niveau demandé, plus la feuille des
- * casiers libres (nécessaire seulement pour Sec 1).
+ * Lit le fichier déposé — classeur .xlsx OU une seule feuille exportée en CSV.
  * Colonnes attendues : 1=Nom, 2=Grand Casier, 3=Numéro série, 4-5-6=Code
  * cadenas, 7=Petit Casier. Feuille libre : 1=Numéro casier, 2=Série, 3-4-5=Code.
+ *
+ * Classeur → on ouvre la feuille « Sec N » du niveau demandé, et la feuille des
+ * casiers libres si elle existe. CSV → il n'y a qu'une feuille, c'est celle du
+ * niveau passé en paramètre : rien à chercher.
  */
 export async function parseCasierWorkbook(
   buf: Buffer,
   level: string,
 ): Promise<{ rows: SheetRow[]; freeLockers: FreeLocker[]; sheetName: string }> {
+  // Un .xlsx est un ZIP : il commence par « PK ». Tout le reste est traité
+  // comme du texte délimité (même détection que @/lib/import-parse).
+  const isXlsx = buf.length > 1 && buf[0] === 0x50 && buf[1] === 0x4b;
+  if (!isXlsx) return parseCasierCsv(buf, level);
+
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf as unknown as ArrayBuffer);
 
@@ -111,14 +125,11 @@ export async function parseCasierWorkbook(
     });
   }
 
+  // Facultative : elle ne sert que si la feuille n'a aucun Grand Casier.
+  // Son absence n'est donc plus une erreur.
   const freeLockers: FreeLocker[] = [];
-  if (level === "1") {
-    const wsFree = wb.getWorksheet(FREE_LOCKERS_SHEET);
-    if (!wsFree) {
-      throw new Error(
-        `Feuille « ${FREE_LOCKERS_SHEET} » introuvable — elle est requise pour attribuer les casiers des Sec 1.`,
-      );
-    }
+  const wsFree = wb.getWorksheet(FREE_LOCKERS_SHEET);
+  if (wsFree) {
     for (let r = 2; r <= wsFree.rowCount; r++) {
       const row = wsFree.getRow(r);
       const number = cell(row, 1);
@@ -136,6 +147,39 @@ export async function parseCasierWorkbook(
   }
 
   return { rows, freeLockers, sheetName };
+}
+
+/**
+ * Une feuille exportée en CSV : mêmes colonnes, dans le même ordre. Les
+ * numéros de ligne restent ceux du tableur pour que les messages d'erreur
+ * pointent au bon endroit. Les en-têtes répétées sont écartées plus tard par
+ * isHeaderRow(), donc on lit dès la première ligne sans rien présumer.
+ */
+function parseCasierCsv(
+  buf: Buffer,
+  level: string,
+): { rows: SheetRow[]; freeLockers: FreeLocker[]; sheetName: string } {
+  const text = buf.toString("utf-8").replace(/^\uFEFF/, "");
+  const parsed = Papa.parse<string[]>(text, { skipEmptyLines: false });
+  const at = (r: string[], i: number): string => String(r[i] ?? "").trim();
+
+  const rows: SheetRow[] = [];
+  parsed.data.forEach((r, i) => {
+    const rawName = at(r, 0);
+    if (!rawName) return;
+    const codes = [at(r, 3), at(r, 4), at(r, 5)].filter((c) => c !== "");
+    rows.push({
+      rawName,
+      grandCasier: at(r, 1),
+      serialNumber: at(r, 2),
+      combination: codes.join("-"),
+      petitCasier: at(r, 6),
+      line: i + 1,
+    });
+  });
+
+  // Un CSV ne porte qu'une feuille : pas de casiers libres à y lire.
+  return { rows, freeLockers: [], sheetName: `Sec ${level} (CSV)` };
 }
 
 /** Minuscules, sans accents, espaces compactés. Base du rapprochement strict. */
@@ -183,12 +227,11 @@ export function indexStudentsByName<T extends DbStudent>(
  * plus les avertissements et les erreurs. L'appelant décide.
  */
 export function planCasierImport(opts: {
-  level: string;
   rows: SheetRow[];
   freeLockers: FreeLocker[];
   dbStudents: DbStudent[];
 }): ImportPlan {
-  const { level, rows, freeLockers, dbStudents } = opts;
+  const { rows, freeLockers, dbStudents } = opts;
   const assignments: PlannedAssignment[] = [];
   const warnings: string[] = [];
   const errors: string[] = [];
@@ -224,8 +267,19 @@ export function planCasierImport(opts: {
     return true;
   });
 
-  if (level === "1") {
-    // ---- Sec 1 : binômes formés automatiquement, casiers de la feuille libre.
+  // La feuille porte-t-elle des Grand Casier ? Une seule ligne suffit : c'est
+  // que la colonne est renseignée et qu'elle fait foi.
+  const hasGrandCasier = dataRows.some((r) => r.grandCasier.trim() !== "");
+
+  if (!hasGrandCasier) {
+    // ---- Aucun Grand Casier : binômes 2 par 2, casiers de la feuille libre.
+    if (freeLockers.length === 0) {
+      errors.push(
+        `Aucun « Grand Casier » dans la feuille et aucune feuille « ${FREE_LOCKERS_SHEET} » : ` +
+          `impossible de savoir quel casier donner à qui.`,
+      );
+      return { assignments, warnings, errors, skipped };
+    }
     const resolved: { row: SheetRow; student: DbStudent }[] = [];
     for (const row of dataRows) {
       const student = resolve(row);
@@ -264,7 +318,7 @@ export function planCasierImport(opts: {
     return { assignments, warnings, errors, skipped };
   }
 
-  // ---- Sec 2-5 : regroupement par « Grand Casier » (jamais par numéro de série).
+  // ---- Grand Casier renseigné : il fait foi (jamais le numéro de série).
   const groups = new Map<string, { row: SheetRow; student: DbStudent }[]>();
   for (const row of dataRows) {
     const gc = row.grandCasier.trim();

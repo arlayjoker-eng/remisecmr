@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   });
 
   // 3) Construire le plan (aucune écriture)
-  const plan = planCasierImport({ level, rows, freeLockers, dbStudents });
+  const plan = planCasierImport({ rows, freeLockers, dbStudents });
 
   // 4) Détecter les conflits : élève déjà rattaché à un AUTRE casier.
   //    On ne réécrit pas une attribution existante — on la signale.
