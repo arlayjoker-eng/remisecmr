@@ -8,6 +8,7 @@ import {
   planStudentEdit,
   type EditFields,
 } from "@/lib/casier-edit";
+import { refreshSharedSerialConflicts } from "@/lib/locker-conflicts";
 import { NextResponse } from "next/server";
 
 // POST — correction manuelle de la fiche d'un élève depuis le comptoir casier.
@@ -76,7 +77,12 @@ export async function POST(req: Request) {
   }
 
   try {
-    await prisma.$transaction((tx) => applyStudentEdit(tx, plan));
+    await prisma.$transaction(async (tx) => {
+      await applyStudentEdit(tx, plan);
+      // Une série saisie à la main peut en dupliquer une autre : on
+      // recalcule les cadenas partagés dans la même transaction.
+      await refreshSharedSerialConflicts(tx);
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erreur de mise à jour.";
     return NextResponse.json(

@@ -159,3 +159,27 @@ model Delivery {
 
   @@unique([studentId, type])
 }
+
+// Contradictions relevées dans les données des casiers. Elles ne bloquent
+// jamais une remise : elles avertissent l'opérateur au comptoir.
+//
+// Pourquoi les stocker : une série portée par deux casiers se retrouve en
+// interrogeant la base, mais deux lignes du classeur qui se contredisent sur
+// UN MÊME casier (série ou code différents) ne laissent aucune trace — la base
+// n'en garde qu'une version, parfois aucune. L'information n'existe qu'au
+// moment de l'import, alors on l'écrit.
+//
+// La clé est le NUMÉRO de casier, pas l'id du Locker : un casier écarté à
+// l'import n'a pas encore de ligne, et doit rester signalé pour le jour où
+// l'attribution le créera.
+model LockerConflict {
+  id          String   @id @default(cuid())
+  number      String // casier concerné
+  kind        String // "DIVERGENT" | "SERIE_PARTAGEE"
+  field       String // "série", "code", "série et code"
+  values      String // les versions en présence, lisibles telles quelles
+  otherNumber String? // l'autre casier, quand une série est partagée
+  detectedAt  DateTime @default(now())
+
+  @@index([number])
+}

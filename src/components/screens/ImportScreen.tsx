@@ -191,8 +191,12 @@ export default function ImportScreen({
           les en-têtes. Listes d&apos;élèves : sélectionnez le niveau (Sec 1 à
           5) avant d&apos;importer — il s&apos;applique à toutes les lignes du
           fichier. Catalogue des casiers : crée les casiers disponibles ;
-          l&apos;opérateur en choisit un au scan. Import atomique : une seule
-          erreur annule tout. Ré-importer met à jour sans créer de doublons.
+          l&apos;opérateur en choisit un au scan — il accepte aussi le classeur
+          « Liste casier Élèves » tel quel : toutes les feuilles sont lues et les
+          casiers répétés dédupliqués, les casiers valides sont importés et ceux
+          que le fichier contredit sont listés. Les listes d&apos;élèves
+          restent atomiques : une seule erreur annule tout. Ré-importer met à
+          jour sans créer de doublons.
         </div>
       </div>
     </div>
@@ -609,7 +613,11 @@ function UploadSection({
             }}
           >
             {result.ok
-              ? `✓ ${result.imported} / ${result.total} lignes importées${fileName ? ` — ${fileName}` : ""}`
+              ? `✓ ${result.imported} / ${result.total} importé(s)${
+                  result.errors.length
+                    ? ` — ${result.errors.length} écarté(s), voir ci-dessous`
+                    : ""
+                }${fileName ? ` — ${fileName}` : ""}`
               : `✗ Import annulé — ${result.errors.length} erreur(s) sur ${result.total} ligne(s)`}
           </div>
           {result.errors.length > 0 && (
