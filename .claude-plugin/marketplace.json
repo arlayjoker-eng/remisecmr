@@ -1,0 +1,11 @@
+{
+  "name": "remisecmr",
+  "owner": { "name": "arlayjoker-eng" },
+  "plugins": [
+    {
+      "name": "git-branch-band",
+      "source": "./mods/git-branch-band",
+      "description": "Muestra la rama de git arriba del prompt"
+    }
+  ]
+}
