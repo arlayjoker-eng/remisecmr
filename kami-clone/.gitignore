@@ -1,0 +1,8 @@
+node_modules
+.next
+next-env.d.ts
+public/pdf.worker.min.js
+*.tsbuildinfo
+.env*
+!.env.example
+test-output

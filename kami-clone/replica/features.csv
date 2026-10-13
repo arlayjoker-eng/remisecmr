@@ -1,13 +1,13 @@
 feature,area,priority,original,clone,notes
-Subir y abrir PDF,editor,must,yes,no,
-Texto sobre el PDF,editor,must,yes,no,
-Subrayar y resaltar,editor,must,yes,no,
-Dibujo a mano alzada,editor,must,yes,no,
+Subir y abrir PDF,editor,must,yes,yes,
+Texto sobre el PDF,editor,must,yes,yes,cuadro de texto; sin edición posterior (se borra y se vuelve a escribir)
+Subrayar y resaltar,editor,must,yes,partial,resaltador a mano alzada; falta resaltar seleccionando texto
+Dibujo a mano alzada,editor,must,yes,yes,bolígrafo con 6 colores y 3 grosores; sin sensibilidad a la presión
 Formas,editor,should,yes,no,
 Regla y transportador,editor,could,yes,no,
 Insertar imagen / medios,editor,should,yes,no,
-Exportar PDF anotado,editor,must,yes,no,
-Biblioteca de documentos,editor,should,yes,no,
+Exportar PDF anotado,editor,must,yes,yes,verificado: las anotaciones se incrustan en el PDF
+Biblioteca de documentos,editor,should,yes,partial,"grid, búsqueda, renombrar y borrar; faltan carpetas"
 Comentario de voz,feedback,should,yes,no,
 Comentario de vídeo y captura,feedback,could,yes,no,
 Banco de anotaciones,feedback,could,yes,no,
